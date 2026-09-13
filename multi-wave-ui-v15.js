@@ -29,6 +29,30 @@ function mount(){
       .multi-wave-card.mw-embedded .card-title{margin-bottom:8px}
       .multi-wave-card.mw-embedded .card-title strong{color:#e8c17e}
       .multi-wave-card.mw-embedded .hint{margin-bottom:0}
+      .multi-wave-card.mw-embedded .mw-actions{
+        display:flex !important;
+        grid-template-columns:none !important;
+        align-items:center;
+        justify-content:flex-start;
+        gap:6px;
+        margin-bottom:8px;
+      }
+      .multi-wave-card.mw-embedded .mw-actions .button{
+        width:auto !important;
+        min-width:0 !important;
+        height:30px;
+        padding:0 9px;
+        border-radius:7px;
+        font-size:9px;
+        line-height:1;
+        white-space:nowrap;
+      }
+      .multi-wave-card.mw-embedded .mw-add{flex:0 0 auto}
+      .multi-wave-card.mw-embedded .mw-duplicate{flex:0 0 auto}
+      @media(max-width:520px){
+        .multi-wave-card.mw-embedded .mw-actions{display:flex !important}
+        .multi-wave-card.mw-embedded .mw-actions .button{width:auto !important}
+      }
     `;
     document.head.appendChild(style);
   }
