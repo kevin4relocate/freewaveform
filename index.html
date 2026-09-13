@@ -31,8 +31,8 @@
       <button class="tool active" data-tool="audio" type="button"><span>♫</span><b>Audio</b></button>
       <button class="tool" data-tool="image" type="button"><span>▧</span><b>Image</b></button>
       <button class="tool" data-tool="waveform" type="button"><span>≋</span><b>Waveform</b></button>
-      <button class="tool" data-tool="presets" type="button"><span>★</span><b>Presets</b></button>
       <button class="tool" data-tool="text" type="button"><span>T</span><b>Text</b></button>
+      <button class="tool" data-tool="presets" type="button"><span>★</span><b>Presets</b></button>
     </nav>
 
     <aside class="inspector">
@@ -168,16 +168,16 @@
         </div>
       </section>
 
-      <section class="panel" data-panel="presets">
-        <div id="presetsHost"></div>
-      </section>
-
       <section class="panel" data-panel="text">
         <div class="card">
           <div class="card-title"><div><strong>Text layers</strong><small>Drag text directly on canvas</small></div><button class="button mini" id="addText" type="button">+ Add</button></div>
           <div class="text-scope-note">Text pulse follows <b>Reactive scope</b>. Choose <b>Waveform + Text</b> or <b>Full Screen</b>, then enable Pulse on each text layer.</div>
           <div id="textList" class="text-list"></div>
         </div>
+      </section>
+
+      <section class="panel" data-panel="presets">
+        <div id="presetsHost"></div>
       </section>
     </aside>
 
