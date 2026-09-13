@@ -3,15 +3,17 @@
 
 const STORAGE_KEY='freewaveform.userPresets.v1';
 const MAX_PRESETS=30;
+const FILE_VERSION=1;
 
 const selectIds=['waveStyle','waveShape','reactScope','syncMode'];
 const rangeIds=['waveReaction','beatPunch','beatSensitivity','waveSmoothing','scenePunch','waveGlow','waveSize','waveThickness','waveOpacity','waveDetail','toothDepth','waveSharpness'];
 const checkIds=['showWave','showPlate','showGlow','showSecondary'];
 const colorIds=['waveColor'];
+const allowedIds=new Set([...selectIds,...rangeIds,...checkIds,...colorIds]);
 
 function $(id){return document.getElementById(id)}
 function fire(el,type){if(el)el.dispatchEvent(new Event(type,{bubbles:true}))}
-function notify(text){const el=$('toast');if(!el)return;el.textContent=text;el.classList.add('show');clearTimeout(notify.t);notify.t=setTimeout(()=>el.classList.remove('show'),2200)}
+function notify(text){const el=$('toast');if(!el)return;el.textContent=text;el.classList.add('show');clearTimeout(notify.t);notify.t=setTimeout(()=>el.classList.remove('show'),2600)}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
 function loadAll(){
@@ -31,9 +33,18 @@ function capture(){
   return values;
 }
 
+function sanitizeValues(values){
+  if(!values||typeof values!=='object'||Array.isArray(values))return null;
+  const clean={};
+  Object.entries(values).forEach(([key,value])=>{
+    if(!allowedIds.has(key))return;
+    if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')clean[key]=value;
+  });
+  return Object.keys(clean).length?clean:null;
+}
+
 function apply(values){
   if(!values)return;
-  // Apply style first because the core may enable/disable Shape based on the style.
   ['waveStyle','waveShape','reactScope','syncMode'].forEach(id=>{
     const el=$(id);if(!el||values[id]===undefined)return;
     el.value=values[id];fire(el,'change');
@@ -54,6 +65,7 @@ function apply(values){
 
 function makeId(){return 'p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
 function formatDate(ts){try{return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})}catch{return''}}
+function safeFileStamp(){return new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}
 
 let root=null;
 function render(){
@@ -96,6 +108,79 @@ function saveCurrent(){
   render();
 }
 
+function exportPresets(){
+  const items=loadAll();
+  if(!items.length){notify('No presets to export');return}
+  const payload={
+    app:'FreeWaveform',
+    type:'waveform-presets',
+    version:FILE_VERSION,
+    exportedAt:new Date().toISOString(),
+    presets:items
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='freewaveform-presets-'+safeFileStamp()+'.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  notify('Exported '+items.length+' preset'+(items.length===1?'':'s'));
+}
+
+function normalizeImported(data){
+  const source=Array.isArray(data)?data:data&&Array.isArray(data.presets)?data.presets:null;
+  if(!source)return[];
+  return source.map(item=>{
+    if(!item||typeof item!=='object')return null;
+    const name=String(item.name||'').trim().slice(0,40);
+    const values=sanitizeValues(item.values||item.settings);
+    if(!name||!values)return null;
+    const createdAt=Number(item.createdAt)||Date.now();
+    const updatedAt=Number(item.updatedAt)||createdAt;
+    return{name,values,createdAt,updatedAt};
+  }).filter(Boolean);
+}
+
+async function importPresets(file){
+  if(!file)return;
+  if(file.size>2*1024*1024){notify('Preset file is too large');return}
+  try{
+    const text=await file.text();
+    const parsed=JSON.parse(text);
+    if(parsed&&parsed.app&&parsed.app!=='FreeWaveform')throw new Error('Not a FreeWaveform preset file');
+    if(parsed&&parsed.version&&Number(parsed.version)>FILE_VERSION)throw new Error('Preset file is from a newer version');
+    const incoming=normalizeImported(parsed);
+    if(!incoming.length)throw new Error('No valid presets found');
+
+    const items=loadAll();
+    let added=0,updated=0;
+    incoming.forEach(p=>{
+      const existing=items.find(x=>String(x.name).toLowerCase()===p.name.toLowerCase());
+      if(existing){
+        existing.values=p.values;
+        existing.updatedAt=Date.now();
+        updated++;
+      }else if(items.length<MAX_PRESETS){
+        items.unshift({id:makeId(),name:p.name,values:p.values,createdAt:p.createdAt,updatedAt:p.updatedAt});
+        added++;
+      }
+    });
+    saveAll(items);
+    render();
+    const parts=[];
+    if(added)parts.push(added+' added');
+    if(updated)parts.push(updated+' updated');
+    if(incoming.length>added+updated)parts.push((incoming.length-added-updated)+' skipped');
+    notify('Import complete · '+(parts.join(' · ')||'no changes'));
+  }catch(err){
+    console.error('Preset import failed',err);
+    notify('Import failed: '+(err?.message||'invalid preset file'));
+  }
+}
+
 function mount(){
   const panel=document.querySelector('[data-panel="waveform"]');
   const templateGrid=$('templateGrid');
@@ -107,21 +192,28 @@ function mount(){
   root.className='card user-presets-card';
   root.innerHTML=`
     <div class="card-title">
-      <div><strong>My Presets</strong><small>Save your current waveform settings in this browser</small></div>
+      <div><strong>My Presets</strong><small>Saved locally · export to move between browsers</small></div>
       <span class="badge user-preset-count">0 / ${MAX_PRESETS}</span>
     </div>
     <div class="user-preset-save-row">
       <input class="user-preset-name" type="text" maxlength="40" placeholder="Preset name, e.g. Kung Fu Punch" />
       <button class="button accent user-preset-save" type="button">Save current</button>
     </div>
+    <div class="user-preset-transfer-row">
+      <button class="button user-preset-export" type="button">⇩ Export presets</button>
+      <button class="button user-preset-import" type="button">⇧ Import presets</button>
+      <input class="user-preset-file" type="file" accept="application/json,.json" hidden />
+    </div>
     <div class="user-preset-list"></div>
-    <p class="hint">Saving again with the same name updates that preset. Presets stay available after refresh, but are stored only in this browser.</p>`;
+    <p class="hint">Presets stay in local storage. Export creates a JSON backup you can import in another browser. Import merges by name: matching presets are updated and new presets are added.</p>`;
   templateCard.insertAdjacentElement('afterend',root);
 
   const style=document.createElement('style');
   style.textContent=`
     .user-presets-card{margin-top:12px}
     .user-preset-save-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+    .user-preset-transfer-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+    .user-preset-transfer-row .button{height:34px;padding:0 10px;font-size:9px}
     .user-preset-name{width:100%;height:38px;padding:0 11px;border:1px solid #2b3236;border-radius:9px;background:#0a0f11;color:#eee6da;outline:none;font:500 10px Inter,system-ui,sans-serif}
     .user-preset-name:focus{border-color:#a87943;box-shadow:0 0 0 2px rgba(210,161,91,.10)}
     .user-preset-save{height:38px;white-space:nowrap;padding:0 12px}
@@ -136,12 +228,20 @@ function mount(){
     .user-preset-delete{height:42px;border:1px solid #293034;border-radius:9px;background:#0c1113;color:#777;cursor:pointer;font-size:16px}
     .user-preset-delete:hover{color:#f1b8a7;border-color:#71443a;background:#1b1110}
     .user-preset-empty{padding:9px 10px;border:1px dashed #293034;border-radius:9px;color:#777;font-size:9px;text-align:center}
-    @media(max-width:520px){.user-preset-save-row{grid-template-columns:1fr}.user-preset-save{width:100%}}
+    @media(max-width:520px){.user-preset-save-row,.user-preset-transfer-row{grid-template-columns:1fr}.user-preset-save{width:100%}}
   `;
   document.head.appendChild(style);
 
+  const fileInput=root.querySelector('.user-preset-file');
   root.querySelector('.user-preset-save').addEventListener('click',saveCurrent);
   root.querySelector('.user-preset-name').addEventListener('keydown',e=>{if(e.key==='Enter')saveCurrent()});
+  root.querySelector('.user-preset-export').addEventListener('click',exportPresets);
+  root.querySelector('.user-preset-import').addEventListener('click',()=>fileInput.click());
+  fileInput.addEventListener('change',async()=>{
+    const file=fileInput.files&&fileInput.files[0];
+    await importPresets(file);
+    fileInput.value='';
+  });
   root.querySelector('.user-preset-list').addEventListener('click',e=>{
     const item=e.target.closest('.user-preset-item');if(!item)return;
     const id=item.dataset.id;
