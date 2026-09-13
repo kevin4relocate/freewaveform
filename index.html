@@ -146,7 +146,11 @@
             <label>Size <span id="waveSizeValue">46%</span><input id="waveSize" class="range" type="range" min="12" max="85" value="46" /></label>
             <label>Thickness <span id="waveThicknessValue">4</span><input id="waveThickness" class="range" type="range" min="1" max="16" value="4" /></label>
             <label>Opacity <span id="waveOpacityValue">78%</span><input id="waveOpacity" class="range" type="range" min="5" max="100" value="78" /></label>
+            <label>Teeth / Detail <span id="waveDetailValue">128</span><input id="waveDetail" class="range" type="range" min="16" max="256" step="8" value="128" /></label>
+            <label>Tooth depth <span id="toothDepthValue">80%</span><input id="toothDepth" class="range" type="range" min="0" max="220" value="80" /></label>
+            <label>Sharpness <span id="waveSharpnessValue">70%</span><input id="waveSharpness" class="range" type="range" min="0" max="100" value="70" /></label>
           </div>
+          <p class="hint"><b>Teeth / Detail</b> controls how many teeth/bars appear. <b>Tooth depth</b> controls how far they stick out. <b>Sharpness</b> changes soft rounded movement into narrow, pointed spikes.</p>
 
           <div class="color-row">
             <input id="waveColor" type="color" value="#e5d3a6" />
@@ -192,6 +196,6 @@
 
   <div id="toast" class="toast" aria-live="polite"></div>
   <audio id="audio" preload="auto"></audio>
-  <script src="app.js"></script>
+  <script src="app-v3.js?v=3"></script>
 </body>
 </html>
