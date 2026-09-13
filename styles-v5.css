@@ -1,0 +1,21 @@
+@import url("./styles-v4.css?v=5");
+
+/* V5: smart alignment guides + multi-select context alignment */
+.stage-wrap{position:relative}
+.smart-guides{position:absolute;inset:0;pointer-events:none;z-index:12;overflow:hidden;border-radius:14px}
+.guide-v,.guide-h{position:absolute;display:none;background:rgba(241,183,91,.92);box-shadow:0 0 0 1px rgba(35,25,15,.28),0 0 12px rgba(241,183,91,.22)}
+.guide-v{width:1px}.guide-h{height:1px}.guide-v.show,.guide-h.show{display:block}
+.guide-badge{position:absolute;left:50%;top:13px;transform:translateX(-50%);display:none;padding:4px 7px;border-radius:999px;background:#211a12;border:1px solid #8c6639;color:#efc77f;font-size:8px;font-weight:700;letter-spacing:.12em;box-shadow:0 4px 18px rgba(0,0,0,.28)}
+.guide-badge.show{display:block}
+.selection-badges{position:absolute;inset:0;pointer-events:none}
+.selection-dot{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:rgba(13,17,19,.9);border:1px solid #d2a15b;color:#f1ca88;font-size:11px;font-weight:700;box-shadow:0 0 0 3px rgba(210,161,91,.12),0 5px 18px rgba(0,0,0,.28)}
+.align-helper{position:absolute;left:18px;bottom:16px;z-index:11;display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:9px;background:rgba(10,13,15,.72);border:1px solid rgba(210,161,91,.22);backdrop-filter:blur(5px);pointer-events:none;color:#9e978c;font-size:8px}
+.align-helper b{color:#e1b568;font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+.align-menu{position:fixed;z-index:1000;width:214px;padding:7px;border-radius:12px;background:#111619;border:1px solid #333a3e;box-shadow:0 18px 50px rgba(0,0,0,.5);display:none}
+.align-menu.show{display:block}
+.align-menu-head{display:flex;align-items:center;justify-content:space-between;padding:6px 7px 8px;color:#f2eadf}
+.align-menu-head b{font-size:10px}.align-menu-head span{font-size:8px;color:#8e887e}
+.align-menu button{width:100%;height:34px;display:flex;align-items:center;gap:9px;border:0;border-radius:8px;background:transparent;color:#cfc7bb;text-align:left;padding:0 9px;cursor:pointer;font-size:10px}
+.align-menu button:hover{background:#211a13;color:#f1cb89}.align-menu button i{font-style:normal;width:18px;text-align:center;color:#d5a35d;font-size:13px}
+.align-sep{height:1px;background:#252b2f;margin:5px 4px}
+@media(max-width:820px){.align-helper{display:none}.align-menu{width:200px}.selection-dot{width:22px;height:22px}}
