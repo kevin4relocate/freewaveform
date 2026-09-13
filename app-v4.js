@@ -163,16 +163,26 @@ function snapPosition(key,x,y){
 canvas.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
   const key=hitItem(e);
-  if(e.shiftKey){selectKey(key,true);e.stopImmediatePropagation();return}
-  if(key){selectKey(key,false);api.switchTool(key==='wave'?'waveform':'text');activeDrag={key};}
+  if(e.shiftKey){selectKey(key,true);e.preventDefault();e.stopImmediatePropagation();return}
+  if(key){
+    selectKey(key,false);
+    api.switchTool(key==='wave'?'waveform':'text');
+    const p=canvasPoint(e),d=keyData(key);
+    activeDrag={key,dx:p.x-d.x,dy:p.y-d.y};
+    try{canvas.setPointerCapture(e.pointerId)}catch{}
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
 },true);
 
 canvas.addEventListener('pointermove',e=>{
   if(!activeDrag||!(e.buttons&1))return;
-  const p=canvasPoint(e),sn=snapPosition(activeDrag.key,p.x,p.y);
+  const p=canvasPoint(e),x=p.x-activeDrag.dx,y=p.y-activeDrag.dy,sn=snapPosition(activeDrag.key,x,y);
   setItemPosition(activeDrag.key,sn.x,sn.y);
   drawSelection();
-});
+  e.preventDefault();
+  e.stopImmediatePropagation();
+},true);
 canvas.addEventListener('pointerup',()=>{activeDrag=null;hideGuides();drawSelection()},true);
 canvas.addEventListener('pointercancel',()=>{activeDrag=null;hideGuides()},true);
 
