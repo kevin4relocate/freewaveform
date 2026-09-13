@@ -31,6 +31,7 @@
       <button class="tool active" data-tool="audio" type="button"><span>♫</span><b>Audio</b></button>
       <button class="tool" data-tool="image" type="button"><span>▧</span><b>Image</b></button>
       <button class="tool" data-tool="waveform" type="button"><span>≋</span><b>Waveform</b></button>
+      <button class="tool" data-tool="presets" type="button"><span>★</span><b>Presets</b></button>
       <button class="tool" data-tool="text" type="button"><span>T</span><b>Text</b></button>
     </nav>
 
@@ -167,6 +168,10 @@
         </div>
       </section>
 
+      <section class="panel" data-panel="presets">
+        <div id="presetsHost"></div>
+      </section>
+
       <section class="panel" data-panel="text">
         <div class="card">
           <div class="card-title"><div><strong>Text layers</strong><small>Drag text directly on canvas</small></div><button class="button mini" id="addText" type="button">+ Add</button></div>
@@ -200,6 +205,7 @@
   <script src="smart-align.js?v=11"></script>
   <script src="wave-presets-v9.js?v=11"></script>
   <script src="user-presets-v10.js?v=12"></script>
+  <script src="preset-tab-compact-v16.js?v=16"></script>
   <script src="export-progress-v11.js?v=11"></script>
   <script src="multi-wave-v14.js?v=15"></script>
   <script src="multi-wave-ui-v15.js?v=15"></script>
