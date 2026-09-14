@@ -31,6 +31,7 @@
     <nav class="tool-rail" aria-label="Editor tools">
       <button class="tool active" data-tool="audio" type="button"><span>♫</span><b>Audio</b></button>
       <button class="tool" data-tool="image" type="button"><span>▧</span><b>Image</b></button>
+      <button class="tool" data-tool="fx" type="button"><span>✦</span><b>FX</b></button>
       <button class="tool" data-tool="waveform" type="button"><span>≋</span><b>Waveform</b></button>
       <button class="tool" data-tool="text" type="button"><span>T</span><b>Text</b></button>
       <button class="tool" data-tool="presets" type="button"><span>★</span><b>Presets</b></button>
@@ -85,6 +86,8 @@
           <p class="hint">Drag the preview to move the background. Use the mouse wheel to zoom in/out.</p>
         </div>
       </section>
+
+      <section class="panel" data-panel="fx"><div id="fxHost"></div></section>
 
       <section class="panel" data-panel="waveform">
         <div class="card">
@@ -174,6 +177,7 @@
   <script src="fw-runtime-v1.js?v=28"></script>
   <script src="wave-config-v1.js?v=28"></script>
   <script src="app-v3.js?v=28"></script>
+  <script src="fx-engine-v1.js?v=29"></script>
   <script src="wave-engine-v2.js?v=28"></script>
   <script src="wave-fill-v1.js?v=28"></script>
   <script src="multi-wave-ui-v15.js?v=28"></script>
