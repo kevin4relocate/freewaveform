@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FreeWaveform Demo</title>
-  <meta name="description" content="A clean audio-reactive waveform editor demo." />
+  <title>FreeWaveform</title>
+  <meta name="description" content="A clean audio-reactive waveform editor." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Serif+SC:wght@400;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles-v5.css?v=11" />
+  <link rel="stylesheet" href="styles-v6.css?v=21" />
 </head>
 <body>
   <header class="app-header">
     <div class="brand">
       <span class="brand-mark">FW</span>
-      <div><strong>FreeWaveform</strong><small>DEMO</small></div>
+      <div><strong>FreeWaveform</strong></div>
     </div>
     <div class="header-actions">
       <div class="segmented" id="ratioSegment">
@@ -36,10 +36,7 @@
     </nav>
 
     <aside class="inspector">
-      <div class="inspector-head">
-        <small>EDIT</small>
-        <h1 id="panelTitle">Audio</h1>
-      </div>
+      <div class="inspector-head"><h1 id="panelTitle">Audio</h1></div>
 
       <section class="panel active" data-panel="audio">
         <div class="card upload-card">
@@ -59,7 +56,7 @@
             <div><small>DURATION</small><strong id="durationLabel">—</strong></div>
             <div><small>ANALYSIS</small><strong id="analysisLabel">Waiting</strong></div>
           </div>
-          <p class="hint">Audio stays in your browser. The visual engine reads live bass, mids, highs and transient attacks from the same audio playback.</p>
+          <p class="hint">Audio stays in your browser. The visual engine reads live bass, mids, highs and transient attacks from the same playback.</p>
         </div>
       </section>
 
@@ -96,34 +93,13 @@
 
         <div class="card">
           <div class="card-title"><div><strong>Waveform</strong><small>Icon + name for faster selection</small></div><span class="badge">LIVE</span></div>
-
-          <div class="choice-row">
-            <span class="choice-icon" id="waveStyleIcon">◯</span>
-            <label>Style<select id="waveStyle"></select></label>
-          </div>
-          <div class="choice-row">
-            <span class="choice-icon" id="waveShapeIcon">○</span>
-            <label>Shape<select id="waveShape"></select></label>
-          </div>
+          <div class="choice-row"><span class="choice-icon" id="waveStyleIcon">◯</span><label>Style<select id="waveStyle"></select></label></div>
+          <div class="choice-row"><span class="choice-icon" id="waveShapeIcon">○</span><label>Shape<select id="waveShape"></select></label></div>
 
           <div class="react-section">
             <div class="section-label">AUDIO REACTION</div>
-            <label>Reactive scope
-              <select id="reactScope">
-                <option value="wave">Waveform only</option>
-                <option value="waveText">Waveform + Text</option>
-                <option value="waveBg">Waveform + Background</option>
-                <option value="full">Full Screen — Wave + Text + Background</option>
-              </select>
-            </label>
-            <label>Beat sync
-              <select id="syncMode">
-                <option value="balanced">Balanced</option>
-                <option value="punchy">Punchy</option>
-                <option value="transient">Transient / Hard Hit</option>
-              </select>
-            </label>
-
+            <label>Reactive scope<select id="reactScope"><option value="wave">Waveform only</option><option value="waveText">Waveform + Text</option><option value="waveBg">Waveform + Background</option><option value="full">Full Screen — Wave + Text + Background</option></select></label>
+            <label>Beat sync<select id="syncMode"><option value="balanced">Balanced</option><option value="punchy">Punchy</option><option value="transient">Transient / Hard Hit</option></select></label>
             <div class="control-grid two">
               <label>Reaction <span id="waveReactionValue">130%</span><input id="waveReaction" class="range" type="range" min="0" max="400" value="130" /></label>
               <label>Beat punch <span id="beatPunchValue">150%</span><input id="beatPunch" class="range" type="range" min="0" max="300" value="150" /></label>
@@ -132,14 +108,12 @@
               <label>Scene punch <span id="scenePunchValue">7%</span><input id="scenePunch" class="range" type="range" min="0" max="20" value="7" /></label>
               <label>Glow <span id="waveGlowValue">16%</span><input id="waveGlow" class="range" type="range" min="0" max="100" value="16" /></label>
             </div>
-
             <div class="sync-meter">
               <div><span>BASS</span><i><b id="meterBass"></b></i></div>
               <div><span>MID</span><i><b id="meterMid"></b></i></div>
               <div><span>HIGH</span><i><b id="meterTreble"></b></i></div>
               <div class="beat-meter"><span>BEAT</span><i><b id="meterBeat"></b></i></div>
             </div>
-            <p class="hint">BEAT is transient-driven, not a metronome. Punchy/Transient modes reduce smoothing and emphasize real attacks so movement is less uniform.</p>
           </div>
 
           <div class="section-label">LOOK</div>
@@ -151,16 +125,16 @@
             <label>Tooth depth <span id="toothDepthValue">80%</span><input id="toothDepth" class="range" type="range" min="0" max="220" value="80" /></label>
             <label>Sharpness <span id="waveSharpnessValue">70%</span><input id="waveSharpness" class="range" type="range" min="0" max="100" value="70" /></label>
           </div>
-          <p class="hint"><b>Teeth / Detail</b> controls how many teeth/bars appear. <b>Tooth depth</b> controls how far they stick out. <b>Sharpness</b> changes soft rounded movement into narrow, pointed spikes.</p>
+          <p class="hint"><b>Detail</b> controls density; <b>Depth</b> controls how far teeth extend; <b>Sharpness</b> changes rounded movement into pointed spikes.</p>
 
           <div class="color-row">
             <input id="waveColor" type="color" value="#e5d3a6" />
             <button class="button" id="autoColor" type="button">Auto match BG</button>
             <button class="button" id="pickColor" type="button">Pick</button>
           </div>
+          <input id="showPlate" type="checkbox" hidden aria-hidden="true" tabindex="-1" />
           <div class="toggle-grid">
             <label><input id="showWave" type="checkbox" checked /> Main wave</label>
-            <label><input id="showPlate" type="checkbox" /> Shape plate</label>
             <label><input id="showGlow" type="checkbox" checked /> Glow</label>
             <label><input id="showSecondary" type="checkbox" /> Secondary wave</label>
           </div>
@@ -176,19 +150,15 @@
         </div>
       </section>
 
-      <section class="panel" data-panel="presets">
-        <div id="presetsHost"></div>
-      </section>
+      <section class="panel" data-panel="presets"><div id="presetsHost"></div></section>
     </aside>
 
     <section class="workspace">
       <div class="workspace-head">
         <div><small>LIVE PREVIEW</small><h2 id="previewTitle">Untitled</h2></div>
-        <div class="status-row"><span id="statusRatio">1920 × 1080</span><span>FIXED FRAME</span><span id="statusAudio">NO AUDIO</span></div>
+        <div class="status-row"><span id="statusRatio">1920 × 1080</span><span id="statusAudio">NO AUDIO</span></div>
       </div>
-      <div class="stage-wrap" id="stageWrap">
-        <canvas id="canvas" width="1920" height="1080"></canvas>
-      </div>
+      <div class="stage-wrap" id="stageWrap"><canvas id="canvas" width="1920" height="1080"></canvas></div>
       <div class="timeline compact-timeline">
         <button class="circle-button" id="timelineRestart" type="button">↶</button>
         <button class="circle-button accent" id="timelinePlay" type="button">▶</button>
@@ -201,17 +171,17 @@
 
   <div id="toast" class="toast" aria-live="polite"></div>
   <audio id="audio" preload="auto"></audio>
-  <script src="app-v3.js?v=11"></script>
-  <script src="wave-presets-v9.js?v=11"></script>
-  <script src="user-presets-v10.js?v=20"></script>
-  <script src="preset-tab-compact-v16.js?v=16"></script>
-  <script src="export-progress-v11.js?v=11"></script>
-  <script src="wave-engine-v2.js?v=28"></script>
-  <script src="center-plate-v20.js?v=20"></script>
-  <script src="multi-wave-ui-v15.js?v=19"></script>
-  <script src="hex-color-v17.js?v=19"></script>
-  <script src="text-hex-color-v18.js?v=18"></script>
-  <script src="text-engine-v2.js?v=28"></script>
-  <script src="editor-controller-v2.js?v=28"></script>
+  <script src="app-v3.js?v=21"></script>
+  <script src="wave-presets-v9.js?v=21"></script>
+  <script src="user-presets-v10.js?v=21"></script>
+  <script src="preset-tab-compact-v16.js?v=21"></script>
+  <script src="export-progress-v11.js?v=21"></script>
+  <script src="wave-engine-v2.js?v=21"></script>
+  <script src="center-plate-v20.js?v=21"></script>
+  <script src="multi-wave-ui-v15.js?v=21"></script>
+  <script src="hex-color-v17.js?v=21"></script>
+  <script src="text-hex-color-v18.js?v=21"></script>
+  <script src="text-engine-v2.js?v=21"></script>
+  <script src="editor-controller-v2.js?v=21"></script>
 </body>
 </html>
