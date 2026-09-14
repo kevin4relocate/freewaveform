@@ -21,6 +21,24 @@ if(!document.getElementById('fw-cn-font-link')){
   document.head.appendChild(link);
 }
 
+if(!document.getElementById('fw-song-title-multiline-style')){
+  const style=document.createElement('style');
+  style.id='fw-song-title-multiline-style';
+  style.textContent=`
+    #textList .text-card:first-child textarea[data-k="text"]{
+      width:100%;min-height:62px;margin-top:5px;padding:9px 10px;
+      border:1px solid #2a3034;border-radius:8px;background:#0a0f11;
+      color:#eee6da;font:inherit;line-height:1.35;resize:vertical;outline:none;
+      box-sizing:border-box;
+    }
+    #textList .text-card:first-child textarea[data-k="text"]:focus{
+      border-color:#9c7444;box-shadow:0 0 0 2px rgba(210,161,91,.10);
+    }
+    .fw-song-title-hint{display:block;margin-top:5px;color:#777;font-size:9px;line-height:1.35}
+  `;
+  document.head.appendChild(style);
+}
+
 const customByIndex=new Map();
 const positions=[];
 const overrides=[];
@@ -33,10 +51,11 @@ function cardIndex(card){
   const n=Number(card?.dataset?.index);
   return Number.isFinite(n)?n:cards().indexOf(card);
 }
+function textControl(card){return card?.querySelector('[data-k="text"]')||null}
 function visibleCards(){
   return cards().map((card,index)=>({card,index})).filter(({card})=>{
     const show=card.querySelector('input[data-k="show"]');
-    const input=card.querySelector('input[data-k="text"]');
+    const input=textControl(card);
     return(!show||show.checked)&&String(input?.value||'').length>0;
   });
 }
@@ -51,7 +70,36 @@ function enhanceSelect(select){
   const saved=customByIndex.get(idx);
   if(saved&&FONT_DEFS[saved])select.value=saved;
 }
-function enhanceAll(){list.querySelectorAll('select[data-k="font"]').forEach(enhanceSelect)}
+function normalizeSongTitle(value){
+  const lines=String(value||'').replace(/\r/g,'').split('\n');
+  if(lines.length<=2)return lines.join('\n');
+  return lines[0]+'\n'+lines.slice(1).join(' ');
+}
+function enhanceSongTitle(){
+  const card=cards()[0];
+  if(!card)return;
+  let field=textControl(card);
+  if(!field)return;
+  if(field.tagName!=='TEXTAREA'){
+    const area=document.createElement('textarea');
+    area.dataset.k='text';area.rows=2;area.maxLength=240;
+    area.value=normalizeSongTitle(field.value);
+    area.className=field.className||'';
+    area.placeholder='Song title — press Enter for line 2';
+    area.setAttribute('aria-label','Song Name, up to two lines');
+    field.replaceWith(area);field=area;
+  }
+  if(!card.querySelector('.fw-song-title-hint')){
+    const hint=document.createElement('small');
+    hint.className='fw-song-title-hint';
+    hint.textContent='Enter = new line · maximum 2 lines';
+    field.insertAdjacentElement('afterend',hint);
+  }
+}
+function enhanceAll(){
+  list.querySelectorAll('select[data-k="font"]').forEach(enhanceSelect);
+  enhanceSongTitle();
+}
 enhanceAll();
 new MutationObserver(enhanceAll).observe(list,{childList:true,subtree:true});
 
@@ -62,6 +110,24 @@ function rememberFont(e){
 }
 list.addEventListener('input',rememberFont,true);
 list.addEventListener('change',rememberFont,true);
+
+// Song Name supports a deliberate second line, but never more than two lines.
+list.addEventListener('keydown',e=>{
+  const field=e.target?.matches?.('textarea[data-k="text"]')?e.target:null;
+  if(!field||cardIndex(field.closest('.text-card'))!==0||e.key!=='Enter')return;
+  if((field.value.match(/\n/g)||[]).length>=1){e.preventDefault()}
+},true);
+list.addEventListener('input',e=>{
+  const field=e.target?.matches?.('textarea[data-k="text"]')?e.target:null;
+  if(!field||cardIndex(field.closest('.text-card'))!==0)return;
+  const clean=normalizeSongTitle(field.value);
+  if(clean!==field.value){
+    const pos=Math.min(field.selectionStart||clean.length,clean.length);
+    field.value=clean;
+    try{field.setSelectionRange(pos,pos)}catch{}
+    field.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+},true);
 
 // Keep index-based position state stable when a text card is removed.
 list.addEventListener('click',e=>{
@@ -97,10 +163,16 @@ ctx.fillText=function(text,x,y,...rest){
     if(prefix)ctx.font=`${prefix} "${def.family}",${def.fallback}`;
   }
 
-  const m=ctx.measureText(String(text));
   const size=Number(String(ctx.font||'').match(/([0-9.]+)px/)?.[1])||32;
-  bounds[index]={x:dx-m.width/2,y:dy-size*.64,w:Math.max(1,m.width),h:size*1.28,cx:dx,cy:dy};
-  return prevFill(text,dx,dy,...rest);
+  const lines=String(text??'').replace(/\r/g,'').split('\n').slice(0,2);
+  const lineHeight=size*1.12;
+  const widths=lines.map(line=>ctx.measureText(line||' ').width);
+  const width=Math.max(1,...widths);
+  const blockHeight=size*1.28+(lines.length-1)*lineHeight;
+  const startY=dy-((lines.length-1)*lineHeight)/2;
+  bounds[index]={x:dx-width/2,y:dy-blockHeight/2,w:width,h:blockHeight,cx:dx,cy:dy};
+
+  lines.forEach((line,i)=>prevFill(line,dx,startY+i*lineHeight,...rest));
 };
 
 function getPositions(){
@@ -112,7 +184,7 @@ function getItems(){
   return cards().map((card,index)=>{
     const p=positions[index]||overrides[index],b=bounds[index];
     const show=card.querySelector('input[data-k="show"]');
-    const input=card.querySelector('input[data-k="text"]');
+    const input=textControl(card);
     const visible=(!show||show.checked)&&String(input?.value||'').length>0;
     if(!p||!b||!visible)return null;
     return{id:`text:${index}`,type:'text',index,label:card.querySelector('header strong')?.textContent||`Text ${index+1}`,x:p.x,y:p.y,bounds:{...b},movable:true};
