@@ -87,7 +87,7 @@ function syncAvailability(){
   const img=currentImage();
   if(img.type==='image'){
     ui.note.textContent=img.resource
-      ?'Drag inside the image to choose the crop. Drag the waveform border to move the waveform.'
+      ?'Image and mask pulse together with the waveform. Drag inside the image to choose the crop.'
       :'Upload an image for this waveform. Until then, the color fill remains visible.';
   }else{
     ui.note.textContent='Color fill follows the same audio-reactive contour as the waveform.';
@@ -329,6 +329,22 @@ function pseudoBin(q,r,w){
   return clamp((low*.8+mid*.65+hi*.55)*ripple+r.beat*.08,0,1.4);
 }
 function punch(r,w){return clamp(r.beat*(w.beatPunch/100),0,3)}
+function imagePulseScale(w,r){
+  const N=24,p=punch(r,w),depth=w.toothDepth/100;
+  let total=0;
+  for(let i=0;i<N;i++){
+    const q=(i+.5)/N;
+    if(w.style==='brushRing'||w.style==='smoothRing'){
+      const b=Math.pow(pseudoBin(q,r,w),lerp(.72,2.2,w.sharpness/100));
+      total+=1+clamp(b*(w.reaction/100)+p*.25,0,3)*.095;
+    }else{
+      const b=pseudoBin(q,r,w);
+      const react=clamp(b*(.10+depth*.15)*(w.reaction/100)+p*(.045+depth*.055),0,.9);
+      total+=1+react;
+    }
+  }
+  return clamp(total/N,1,1.45);
+}
 function ringPath(w,r,cx,cy,rad){
   const N=Math.max(160,Math.round(w.detail*2.5)),dep=w.toothDepth/100,p=punch(r,w),rough=w.style==='brushRing'?1.25:0;
   ctx.beginPath();
@@ -358,15 +374,16 @@ function buildFillPath(w,r,cx,cy,rad){
   if(w.style==='brushRing'||w.style==='smoothRing')ringPath(w,r,cx,cy,rad);
   else radialPath(w,r,cx,cy,rad);
 }
-function drawImageCover(resource,cfg,cx,cy,rad,alpha){
+function drawImageCover(resource,cfg,cx,cy,rad,alpha,pulseScale=1){
   const img=resource?.img;
   if(!img?.naturalWidth||!img?.naturalHeight)return;
   const view=rad*2*1.34;
   const base=Math.max(view/img.naturalWidth,view/img.naturalHeight);
-  const scale=base*(cfg.imageZoom/100);
-  const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
-  const maxX=Math.max(0,(dw-view)/2),maxY=Math.max(0,(dh-view)/2);
-  const ox=((cfg.imageX-50)/50)*maxX,oy=((cfg.imageY-50)/50)*maxY;
+  const zoom=cfg.imageZoom/100;
+  const baseDw=img.naturalWidth*base*zoom,baseDh=img.naturalHeight*base*zoom;
+  const dw=baseDw*pulseScale,dh=baseDh*pulseScale;
+  const maxX=Math.max(0,(baseDw-view)/2),maxY=Math.max(0,(baseDh-view)/2);
+  const ox=((cfg.imageX-50)/50)*maxX*pulseScale,oy=((cfg.imageY-50)/50)*maxY*pulseScale;
   ctx.globalAlpha=alpha;
   ctx.drawImage(img,cx-dw/2+ox,cy-dh/2+oy,dw,dh);
 }
@@ -388,7 +405,7 @@ function drawFillLayer(frame,w){
   if(imgCfg.type==='image'&&imgCfg.resource){
     buildFillPath(w,r,cx,cy,rad);
     ctx.clip();
-    drawImageCover(imgCfg.resource,imgCfg,cx,cy,rad,fill.opacity/100);
+    drawImageCover(imgCfg.resource,imgCfg,cx,cy,rad,fill.opacity/100,imagePulseScale(w,r));
   }
   ctx.restore();
 }
