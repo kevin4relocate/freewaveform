@@ -7,6 +7,8 @@
 
 /* Unified control sizing */
 .button{height:var(--control-h);min-height:var(--control-h);padding:0 11px;border-radius:var(--control-radius);display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap}
+.inspector .button{height:32px!important;min-height:32px!important;padding:0 9px!important;font-size:10px!important}
+.inspector .button.accent{font-size:10px!important}
 .button.mini{height:var(--control-h-sm);min-height:var(--control-h-sm);padding:0 9px;font-size:10px}
 .card select,.card input[type=text]{height:var(--control-h);min-height:var(--control-h);padding-top:0;padding-bottom:0;border-radius:var(--control-radius)}
 .card select{-webkit-appearance:none;appearance:none;background-color:#0a0f11;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23c9c2b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:14px 14px;padding-right:38px}
