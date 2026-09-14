@@ -87,7 +87,7 @@ function syncAvailability(){
   const img=currentImage();
   if(img.type==='image'){
     ui.note.textContent=img.resource
-      ?'Image and mask pulse together with the waveform. Drag inside the image to choose the crop.'
+      ?'Image and mask pulse together with the waveform. In Waveform mode, drag inside the image to choose the crop.'
       :'Upload an image for this waveform. Until then, the color fill remains visible.';
   }else{
     ui.note.textContent='Color fill follows the same audio-reactive contour as the waveform.';
@@ -419,6 +419,15 @@ function canvasPoint(e){
   const r=canvas.getBoundingClientRect();
   return{x:(e.clientX-r.left)/r.width*canvas.width,y:(e.clientY-r.top)/r.height*canvas.height};
 }
+function activeTool(){return document.querySelector('.tool.active')?.dataset.tool||''}
+function isTextHit(x,y){
+  const items=window.__FW_TEXT_BRIDGE?.getItems?.()||[];
+  for(let i=items.length-1;i>=0;i--){
+    const b=items[i]?.bounds;
+    if(b&&x>=b.x-10&&x<=b.x+b.w+10&&y>=b.y-8&&y<=b.y+b.h+8)return true;
+  }
+  return false;
+}
 function isInsideFill(w,x,y){
   if(!w?.showWave||!FILLABLE.has(w.style))return false;
   const fill=fillFromLayer(w),cfg=layerImageConfig(w);
@@ -445,8 +454,10 @@ function imagePanCapacity(w,cfg){
   return{x:Math.max(1,(dw-view)/2),y:Math.max(1,(dh-view)/2)};
 }
 canvas.addEventListener('pointerdown',e=>{
-  if(e.button!==0||!e.isTrusted)return;
-  const p=canvasPoint(e),index=imageHit(p.x,p.y);
+  if(e.button!==0||!e.isTrusted||activeTool()!=='waveform')return;
+  const p=canvasPoint(e);
+  if(isTextHit(p.x,p.y))return;
+  const index=imageHit(p.x,p.y);
   if(index<0)return;
   api.selectLayer?.(index);
   const layer=api.getLayers()[index],cfg=layerImageConfig(layer);
@@ -473,7 +484,7 @@ function endCrop(e){
   if(!cropDrag||e.pointerId!==cropDrag.pointerId)return;
   cropDrag=null;
   try{canvas.releasePointerCapture(e.pointerId)}catch{}
-  canvas.style.cursor='move';
+  canvas.style.cursor=activeTool()==='waveform'?'move':'default';
   e.preventDefault();
   e.stopImmediatePropagation();
 }
