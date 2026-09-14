@@ -14,14 +14,10 @@ const ctx=canvas.getContext('2d');
 const audio=$('#audio');
 
 const DEFAULT_BG={fit:'cover',opacity:100,zoom:100,darkness:0,blur:0,saturation:100,x:50,y:50};
-const DEFAULT_TEXTS=[
-  {id:'song',label:'Song Name',text:'SONG TITLE',font:'serifCN',size:72,color:'#f4ead8',opacity:100,x:50,y:46,show:true,react:true,strength:14},
-  {id:'artist',label:'Artist / Channel',text:'ARTIST NAME',font:'sans',size:28,color:'#f1e5d0',opacity:86,x:50,y:58,show:true,react:true,strength:9}
-];
 const state={
   tool:'audio',ratio:'16:9',image:null,imageUrl:'',bg:{...DEFAULT_BG},
   reactive:{scope:'waveText',syncMode:'punchy',scenePunch:7},
-  texts:DEFAULT_TEXTS.map(x=>({...x}))
+  texts:[]
 };
 
 let audioUrl='',imageDrag=null;
@@ -79,11 +75,11 @@ function syncImageUI(){const b=state.bg;$('#imageFit').value=b.fit;[['imageOpaci
 
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function renderTextCards(){
-  const list=$('#textList');list.innerHTML=state.texts.map((t,i)=>`<div class="text-card" data-index="${i}"><header><strong>${esc(t.label)}</strong><div><label class="text-show-toggle"><input data-k="show" type="checkbox" ${t.show?'checked':''}> Show</label>${i>1?'<button class="delete-text" type="button" title="Delete">×</button>':''}</div></header><label>Text<input data-k="text" type="text" value="${esc(t.text)}"></label><div class="row"><label>Font<select data-k="font">${fontOptions.map(([v,n])=>`<option value="${v}" ${t.font===v?'selected':''}>${n}</option>`).join('')}</select></label><label class="text-color-label">Color<input class="text-native-color" data-k="color" type="color" value="${t.color}"></label><label>Size <span>${t.size}</span><input data-k="size" class="range" type="range" min="14" max="160" value="${t.size}"></label><label>Opacity <span>${t.opacity}%</span><input data-k="opacity" class="range" type="range" min="5" max="100" value="${t.opacity}"></label><label>React to music<select data-k="react"><option value="false" ${!t.react?'selected':''}>Off</option><option value="true" ${t.react?'selected':''}>Pulse</option></select></label><label>Pulse strength <span>${t.strength}%</span><input data-k="strength" class="range" type="range" min="0" max="80" value="${t.strength}"></label></div></div>`).join('');
+  const list=$('#textList');list.innerHTML=state.texts.map((t,i)=>`<div class="text-card" data-index="${i}"><header><strong>${esc(t.label)}</strong><div><label class="text-show-toggle"><input data-k="show" type="checkbox" ${t.show?'checked':''}> Show</label><button class="delete-text" type="button" title="Delete">×</button></div></header><label>Text<input data-k="text" type="text" value="${esc(t.text)}"></label><div class="row"><label>Font<select data-k="font">${fontOptions.map(([v,n])=>`<option value="${v}" ${t.font===v?'selected':''}>${n}</option>`).join('')}</select></label><label class="text-color-label">Color<input class="text-native-color" data-k="color" type="color" value="${t.color}"></label><label>Size <span>${t.size}</span><input data-k="size" class="range" type="range" min="14" max="160" value="${t.size}"></label><label>Opacity <span>${t.opacity}%</span><input data-k="opacity" class="range" type="range" min="5" max="100" value="${t.opacity}"></label><label>React to music<select data-k="react"><option value="false" ${!t.react?'selected':''}>Off</option><option value="true" ${t.react?'selected':''}>Pulse</option></select></label><label>Pulse strength <span>${t.strength}%</span><input data-k="strength" class="range" type="range" min="0" max="80" value="${t.strength}"></label></div></div>`).join('');
   window.__FW_TEXT_BRIDGE?.enhanceAll?.();document.dispatchEvent(new CustomEvent('fw:text-ui-rendered'));
 }
-function initTextUI(){renderTextCards();$('#addText').addEventListener('click',()=>{if(state.texts.length>=10){toast('Maximum 10 text layers');return}state.texts.push({id:'extra'+Date.now(),label:'Extra Text',text:'Extra Text',font:'calligraphy',size:42,color:'#f0e2c8',opacity:90,x:50,y:70,show:true,react:true,strength:10});renderTextCards()})}
-$('#textList').addEventListener('input',e=>{const card=e.target.closest('.text-card');if(!card)return;const t=state.texts[+card.dataset.index],k=e.target.dataset.k;if(!t||!k)return;if(k==='show')t.show=e.target.checked;else if(k==='react')t.react=e.target.value==='true';else if(['size','opacity','strength'].includes(k))t[k]=+e.target.value;else t[k]=e.target.value;if(k==='text'&&t.id==='song')$('#previewTitle').textContent=t.text||'Untitled';if(e.target.type==='range'){const s=e.target.parentElement.querySelector('span');if(s)s.textContent=e.target.value+(k==='opacity'||k==='strength'?'%':'')}});
+function initTextUI(){renderTextCards();$('#addText').addEventListener('click',()=>{if(state.texts.length>=10){toast('Maximum 10 text layers');return}const n=state.texts.length+1;state.texts.push({id:'text'+Date.now(),label:'Free Text '+n,text:'Free Text',font:'sans',size:42,color:'#f0e2c8',opacity:90,x:50,y:70,show:true,react:false,strength:10});renderTextCards()})}
+$('#textList').addEventListener('input',e=>{const card=e.target.closest('.text-card');if(!card)return;const t=state.texts[+card.dataset.index],k=e.target.dataset.k;if(!t||!k)return;if(k==='show')t.show=e.target.checked;else if(k==='react')t.react=e.target.value==='true';else if(['size','opacity','strength'].includes(k))t[k]=+e.target.value;else t[k]=e.target.value;if(e.target.type==='range'){const s=e.target.parentElement.querySelector('span');if(s)s.textContent=e.target.value+(k==='opacity'||k==='strength'?'%':'')}});
 $('#textList').addEventListener('change',e=>{if(e.target.dataset.k==='react'){const card=e.target.closest('.text-card');state.texts[+card.dataset.index].react=e.target.value==='true'}});
 $('#textList').addEventListener('click',e=>{if(!e.target.classList.contains('delete-text'))return;const card=e.target.closest('.text-card'),i=+card.dataset.index;state.texts.splice(i,1);window.__FW_TEXT_BRIDGE?.removeIndex?.(i);renderTextCards()});
 
@@ -161,7 +157,7 @@ async function exportFullTrack(){
 $('#exportBtn').addEventListener('click',exportFullTrack);
 
 function resetProject(){
-  state.bg={...DEFAULT_BG};state.image=null;if(state.imageUrl)URL.revokeObjectURL(state.imageUrl);state.imageUrl='';$('#imageName').textContent='Optional';state.reactive={scope:'waveText',syncMode:'punchy',scenePunch:7};state.texts=DEFAULT_TEXTS.map(x=>({...x}));energyBaseline=.04;beatEnvelope=0;lastBass=0;syncImageUI();initReactiveValues();renderTextCards();$('#previewTitle').textContent='Untitled';window.__FW_TEXT_BRIDGE?.reset?.();document.dispatchEvent(new CustomEvent('fw:project-reset'));toast('Project reset');
+  state.bg={...DEFAULT_BG};state.image=null;if(state.imageUrl)URL.revokeObjectURL(state.imageUrl);state.imageUrl='';$('#imageName').textContent='Optional';state.reactive={scope:'waveText',syncMode:'punchy',scenePunch:7};state.texts=[];energyBaseline=.04;beatEnvelope=0;lastBass=0;syncImageUI();initReactiveValues();renderTextCards();$('#previewTitle').textContent='Untitled';window.__FW_TEXT_BRIDGE?.reset?.();document.dispatchEvent(new CustomEvent('fw:project-reset'));toast('Project reset');
 }
 function initReactiveValues(){$('#reactScope').value=state.reactive.scope;$('#syncMode').value=state.reactive.syncMode;$('#scenePunch').value=state.reactive.scenePunch;$('#scenePunchValue').textContent=state.reactive.scenePunch+'%';updateAnalyserSettings()}
 $('#resetProject').addEventListener('click',resetProject);

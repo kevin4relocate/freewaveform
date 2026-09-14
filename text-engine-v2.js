@@ -17,20 +17,15 @@ function cards(){return[...list.querySelectorAll('.text-card')]}
 function cardIndex(card){const n=Number(card?.dataset?.index);return Number.isFinite(n)?n:cards().indexOf(card)}
 function textControl(card){return card?.querySelector('[data-k="text"]')||null}
 function enhanceSelect(select){if(!select||select.dataset.cnFontsEnhanced)return;select.dataset.cnFontsEnhanced='1';Object.entries(FONT_DEFS).forEach(([value,def])=>{if(select.querySelector(`option[value="${value}"]`))return;const opt=document.createElement('option');opt.value=value;opt.textContent=def.label;select.appendChild(opt)});const idx=cardIndex(select.closest('.text-card')),saved=window.__FW_APP?.getState?.()?.texts?.[idx]?.font;if(saved&&select.querySelector(`option[value="${saved}"]`))select.value=saved}
-function normalizeSongTitle(value){const lines=String(value||'').replace(/\r/g,'').split('\n');return lines.length<=2?lines.join('\n'):lines[0]+'\n'+lines.slice(1).join(' ')}
-function enhanceSongTitle(){const card=cards()[0];if(!card)return;let field=textControl(card);if(!field)return;if(field.tagName!=='TEXTAREA'){const area=document.createElement('textarea');area.dataset.k='text';area.rows=2;area.maxLength=240;area.value=normalizeSongTitle(field.value);area.className=field.className||'';area.placeholder='Song title — press Enter for line 2';area.setAttribute('aria-label','Song Name, up to two lines');field.replaceWith(area);field=area}if(!card.querySelector('.fw-song-title-hint')){const hint=document.createElement('small');hint.className='fw-song-title-hint';hint.textContent='Enter = new line · maximum 2 lines';field.insertAdjacentElement('afterend',hint)}}
-function enhanceAll(){list.querySelectorAll('select[data-k="font"]').forEach(enhanceSelect);enhanceSongTitle()}
+function enhanceAll(){list.querySelectorAll('select[data-k="font"]').forEach(enhanceSelect)}
 enhanceAll();
-
-list.addEventListener('keydown',e=>{const field=e.target?.matches?.('textarea[data-k="text"]')?e.target:null;if(!field||cardIndex(field.closest('.text-card'))!==0||e.key!=='Enter')return;if((field.value.match(/\n/g)||[]).length>=1)e.preventDefault()},true);
-list.addEventListener('input',e=>{const field=e.target?.matches?.('textarea[data-k="text"]')?e.target:null;if(!field||cardIndex(field.closest('.text-card'))!==0)return;const clean=normalizeSongTitle(field.value);if(clean!==field.value){const pos=Math.min(field.selectionStart||clean.length,clean.length);field.value=clean;try{field.setSelectionRange(pos,pos)}catch{}}},true);
 
 function beginFrame(){bounds.length=0}
 function resolvePosition(index,x,y){const p=overrides[index]||{x:+x||50,y:+y||50};positions[index]={x:p.x,y:p.y};return{x:p.x,y:p.y}}
 function recordRendered(index,data={}){if(data.visible===false)return;if(data.bounds)bounds[index]={...data.bounds};if(Number.isFinite(+data.x)&&Number.isFinite(+data.y))positions[index]={x:+data.x,y:+data.y}}
 function getPositions(){return cards().map((_,i)=>positions[i]?{...positions[i]}:overrides[i]?{...overrides[i]}:null)}
 function getBounds(){return bounds.map(b=>b?{...b}:null)}
-function getItems(){return cards().map((card,index)=>{const p=positions[index]||overrides[index],b=bounds[index],show=card.querySelector('input[data-k="show"]'),input=textControl(card),visible=(!show||show.checked)&&String(input?.value||'').length>0;if(!p||!b||!visible)return null;return{id:`text:${index}`,type:'text',index,label:card.querySelector('header strong')?.textContent||`Text ${index+1}`,x:p.x,y:p.y,bounds:{...b},movable:true}}).filter(Boolean)}
+function getItems(){return cards().map((card,index)=>{const p=positions[index]||overrides[index],b=bounds[index],show=card.querySelector('input[data-k="show"]'),input=textControl(card),visible=(!show||show.checked)&&String(input?.value||'').length>0;if(!p||!b||!visible)return null;return{id:`text:${index}`,type:'text',index,label:card.querySelector('header strong')?.textContent||`Free Text ${index+1}`,x:p.x,y:p.y,bounds:{...b},movable:true}}).filter(Boolean)}
 function setPosition(index,x,y){index=Number(index);if(!Number.isInteger(index)||index<0||index>=cards().length||!Number.isFinite(+x)||!Number.isFinite(+y))return false;const p={x:clamp(+x,2,98),y:clamp(+y,2,98)};overrides[index]=p;positions[index]={...p};return true}
 function setPositions(items){if(!Array.isArray(items))return false;items.forEach(item=>setPosition(item.index,item.x,item.y));return true}
 function moveTextTo(index,x,y){return setPosition(index,x,y)}
