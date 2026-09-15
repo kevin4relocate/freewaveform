@@ -13,8 +13,9 @@ const DEFAULT_WAVE={
 };
 const STYLE_OPTIONS=[
   ['brushRing','◯','Brush Ring'],['smoothRing','◎','Smooth Ring'],['radial','✺','Radial Bars'],['orbit','••','Orbit Dots'],
-  ['centerLine','∿','Center Wave'],['mountain','⌁','Mountain Wave'],['bottom','▁','Bottom Wave'],['top','▔','Top Wave'],
-  ['dual','═','Top + Bottom'],['left','▏','Left Bars'],['right','▕','Right Bars'],['sides','↔','Side Bars']
+  ['centerLine','∿','Center Wave'],['mountain','⌁','Mountain Wave'],
+  ['softBars','▥','Soft Bars'],['mirrorBars','▦','Mirror Bars'],['roundedBars','▤','Rounded Bars'],['centerBars','▧','Center Mirror'],
+  ['bottom','▁','Bottom Wave'],['top','▔','Top Wave'],['dual','═','Top + Bottom'],['left','▏','Left Bars'],['right','▕','Right Bars'],['sides','↔','Side Bars']
 ];
 const SHAPE_OPTIONS=[
   ['circle','○','Circle'],['triangle','△','Triangle'],['square','□','Square'],['diamond','◇','Diamond'],
@@ -22,6 +23,10 @@ const SHAPE_OPTIONS=[
   ['lotus','✿','Lotus'],['blob','◌','Ink Blob']
 ];
 const TEMPLATES={
+  lofiCalm:{name:'Lo-fi Calm',icon:'▦',style:'mirrorBars',shape:'circle',size:54,maxSize:70,thickness:3,opacity:74,reaction:46,beatPunch:16,beatSensitivity:100,smoothing:91,detail:144,toothDepth:54,sharpness:18,glow:3,showSecondary:false},
+  softVocal:{name:'Soft Vocal',icon:'▧',style:'centerBars',shape:'circle',size:58,maxSize:72,thickness:3,opacity:80,reaction:62,beatPunch:20,beatSensitivity:112,smoothing:87,detail:136,toothDepth:68,sharpness:28,glow:5,showSecondary:false},
+  acousticGentle:{name:'Acoustic Gentle',icon:'▤',style:'roundedBars',shape:'circle',size:52,maxSize:68,thickness:4,opacity:76,reaction:55,beatPunch:18,beatSensitivity:105,smoothing:89,detail:120,toothDepth:62,sharpness:10,glow:2,showSecondary:false},
+  chillPop:{name:'Chill Pop',icon:'▥',style:'softBars',shape:'circle',size:60,maxSize:74,thickness:3,opacity:82,reaction:72,beatPunch:28,beatSensitivity:118,smoothing:83,detail:152,toothDepth:78,sharpness:38,glow:6,showSecondary:false},
   ink:{name:'Ink Ring',icon:'◯',style:'brushRing',shape:'circle',size:46,thickness:4,opacity:78,reaction:145,beatPunch:145,detail:104,toothDepth:55,sharpness:58,glow:8,showSecondary:false},
   fine:{name:'Fine Teeth',icon:'✹',style:'brushRing',shape:'circle',size:47,thickness:3,opacity:82,reaction:185,beatPunch:175,detail:176,toothDepth:110,sharpness:78,glow:12,showSecondary:false},
   razor:{name:'Razor Ring',icon:'✷',style:'radial',shape:'circle',size:47,thickness:2,opacity:88,reaction:235,beatPunch:220,detail:216,toothDepth:165,sharpness:90,glow:18,showSecondary:false},
@@ -36,5 +41,6 @@ const TEMPLATES={
 };
 const EDGE=new Set(['bottom','top','dual','left','right','sides']);
 const ROUNDISH=new Set(['brushRing','smoothRing','radial','orbit']);
-window.__FW_WAVE_CONFIG={DEFAULT_FILL,DEFAULT_PLATE,DEFAULT_WAVE,STYLE_OPTIONS,SHAPE_OPTIONS,TEMPLATES,EDGE,ROUNDISH,FILLABLE:ROUNDISH};
+const SOFT=new Set(['softBars','mirrorBars','roundedBars','centerBars']);
+window.__FW_WAVE_CONFIG={DEFAULT_FILL,DEFAULT_PLATE,DEFAULT_WAVE,STYLE_OPTIONS,SHAPE_OPTIONS,TEMPLATES,EDGE,ROUNDISH,SOFT,FILLABLE:ROUNDISH};
 })();
