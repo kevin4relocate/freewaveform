@@ -73,7 +73,7 @@ function initImageUI(){
 }
 function syncImageUI(){const b=state.bg;$('#imageFit').value=b.fit;[['imageOpacity','opacity','%'],['imageZoom','zoom','%'],['imageDarkness','darkness','%'],['imageBlur','blur','px'],['imageSaturation','saturation','%']].forEach(([id,key,suf])=>{$('#'+id).value=b[key];$('#'+id+'Value').textContent=b[key]+suf})}
 
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]))}
 function renderTextCards(){
   const list=$('#textList');list.innerHTML=state.texts.map((t,i)=>`<div class="text-card" data-index="${i}"><header><strong>${esc(t.label)}</strong><div><label class="text-show-toggle"><input data-k="show" type="checkbox" ${t.show?'checked':''}> Show</label><button class="delete-text" type="button" title="Delete">×</button></div></header><label>Text<input data-k="text" type="text" value="${esc(t.text)}"></label><div class="row"><label>Font<select data-k="font">${fontOptions.map(([v,n])=>`<option value="${v}" ${t.font===v?'selected':''}>${n}</option>`).join('')}</select></label><label class="text-color-label">Color<input class="text-native-color" data-k="color" type="color" value="${t.color}"></label><label>Size <span>${t.size}</span><input data-k="size" class="range" type="range" min="14" max="160" value="${t.size}"></label><label>Opacity <span>${t.opacity}%</span><input data-k="opacity" class="range" type="range" min="5" max="100" value="${t.opacity}"></label><label>Text reaction<select data-k="react"><option value="false" ${!t.react?'selected':''}>Follow scope</option><option value="true" ${t.react?'selected':''}>Always Pulse</option></select></label><label>Pulse strength <span>${t.strength}%</span><input data-k="strength" class="range" type="range" min="0" max="80" value="${t.strength}"></label></div></div>`).join('');
   window.__FW_TEXT_BRIDGE?.enhanceAll?.();document.dispatchEvent(new CustomEvent('fw:text-ui-rendered'));
@@ -165,11 +165,11 @@ function cleanupExportSession(){
 async function exportFullTrack(){
   if(exporting){toast('Export already running');return}if(!audio.src||!Number.isFinite(audio.duration)){toast('Upload audio first');return}if(!window.MediaRecorder){toast('MediaRecorder is not supported');return}await ensureAudioGraph();
   exporting=true;renderLastPaint=0;$('#exportBtn').disabled=true;$('#exportBtn').textContent='Rendering…';
-  exportVideoStream=canvas.captureStream(30);const videoTrack=exportVideoStream.getVideoTracks()[0];if(videoTrack&&'contentHint'in videoTrack)videoTrack.contentHint='motion';
+  exportVideoStream=canvas.captureStream(30);const videoTrack=exportVideoStream.getVideoTracks()[0];if(videoTrack&&'contentHint'in videoTrack)videoTrack.contentHint='detail';
   const sourceAudioTrack=mediaDest.stream.getAudioTracks()[0];exportAudioTrack=sourceAudioTrack?.clone?.()||sourceAudioTrack||null;
   const stream=new MediaStream([...exportVideoStream.getVideoTracks(),...(exportAudioTrack?[exportAudioTrack]:[])]);
   let mime='video/webm';for(const m of['video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus','video/webm'])if(MediaRecorder.isTypeSupported(m)){mime=m;break}
-  exportChunks=[];exportRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6000000,audioBitsPerSecond:160000});
+  exportChunks=[];exportRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:12000000,audioBitsPerSecond:192000});
   const wasTime=audio.currentTime;
   const finishUI=()=>{exporting=false;renderLastPaint=0;$('#exportBtn').disabled=false;$('#exportBtn').textContent='Export WebM'};
   exportRecorder.ondataavailable=e=>{if(e.data.size)exportChunks.push(e.data)};
@@ -183,7 +183,7 @@ async function exportFullTrack(){
   exportRecorder.start(1000);
   try{await audio.play()}catch{if(exportRecorder?.state!=='inactive')exportRecorder.stop();return}
   const stop=()=>{if(exportRecorder&&exportRecorder.state!=='inactive')exportRecorder.stop();audio.currentTime=wasTime;audio.pause()};
-  audio.addEventListener('ended',stop,{once:true});toast('Rendering full track at a stable 30 FPS');
+  audio.addEventListener('ended',stop,{once:true});toast('Rendering full track at a stable 30 FPS · high quality 1080p');
 }
 $('#exportBtn').addEventListener('click',exportFullTrack);
 
