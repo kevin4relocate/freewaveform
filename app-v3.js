@@ -23,7 +23,7 @@ const state={
 let audioUrl='',imageDrag=null;
 let audioCtx=null,sourceNode=null,analyser=null,mediaDest=null,freqData=null,prevSpectrum=null;
 let manualTime=0,exporting=false,exportRecorder=null,exportChunks=[],exportVideoStream=null,exportAudioTrack=null;
-let lastBass=0,energyBaseline=.04,beatEnvelope=0,lastBeatAt=0,frameCounter=0,timelineLastPaint=0;
+let lastBass=0,energyBaseline=.04,beatEnvelope=0,lastBeatAt=0,frameCounter=0,timelineLastPaint=0,renderLastPaint=0;
 
 const fonts={
   serifCN:'"Noto Serif SC","Songti SC","STSong",serif',calligraphy:'"Ma Shan Zheng","Kaiti SC","STKaiti",cursive',
@@ -135,7 +135,9 @@ function runVisualFrame(r){
   const frame={ctx,canvas,audio,energy:r,state,time:r.time};
   drawBackground(r,state.reactive.scope==='waveBg');pipeline?.run('ambient',frame);pipeline?.run('plate',frame);pipeline?.run('wave',frame);drawTexts(r);pipeline?.run('overlay',frame);
 }
-function render(){
+function render(now=performance.now()){
+  if(exporting&&now-renderLastPaint<32){requestAnimationFrame(render);return}
+  renderLastPaint=now;
   const r=energy();updateMeters(r);ctx.clearRect(0,0,canvas.width,canvas.height);const full=state.reactive.scope==='full';
   if(full){const w=canvas.width,h=canvas.height,p=clamp(r.beat*(state.reactive.scenePunch/100),0,.18);ctx.save();ctx.translate(w/2,h/2);ctx.scale(1+p,1+p);ctx.translate(-w/2,-h/2);runVisualFrame(r);ctx.restore();if(r.beat>.04){ctx.save();ctx.globalCompositeOperation='screen';ctx.fillStyle=`rgba(255,225,175,${clamp(r.beat*.025,0,.04)})`;ctx.fillRect(0,0,w,h);ctx.restore()}}
   else runVisualFrame(r);
@@ -162,14 +164,14 @@ function cleanupExportSession(){
 }
 async function exportFullTrack(){
   if(exporting){toast('Export already running');return}if(!audio.src||!Number.isFinite(audio.duration)){toast('Upload audio first');return}if(!window.MediaRecorder){toast('MediaRecorder is not supported');return}await ensureAudioGraph();
-  exporting=true;$('#exportBtn').disabled=true;$('#exportBtn').textContent='Rendering…';
+  exporting=true;renderLastPaint=0;$('#exportBtn').disabled=true;$('#exportBtn').textContent='Rendering…';
   exportVideoStream=canvas.captureStream(30);const videoTrack=exportVideoStream.getVideoTracks()[0];if(videoTrack&&'contentHint'in videoTrack)videoTrack.contentHint='motion';
   const sourceAudioTrack=mediaDest.stream.getAudioTracks()[0];exportAudioTrack=sourceAudioTrack?.clone?.()||sourceAudioTrack||null;
   const stream=new MediaStream([...exportVideoStream.getVideoTracks(),...(exportAudioTrack?[exportAudioTrack]:[])]);
   let mime='video/webm';for(const m of['video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus','video/webm'])if(MediaRecorder.isTypeSupported(m)){mime=m;break}
-  exportChunks=[];exportRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000,audioBitsPerSecond:192000});
+  exportChunks=[];exportRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6000000,audioBitsPerSecond:160000});
   const wasTime=audio.currentTime;
-  const finishUI=()=>{exporting=false;$('#exportBtn').disabled=false;$('#exportBtn').textContent='Export WebM'};
+  const finishUI=()=>{exporting=false;renderLastPaint=0;$('#exportBtn').disabled=false;$('#exportBtn').textContent='Export WebM'};
   exportRecorder.ondataavailable=e=>{if(e.data.size)exportChunks.push(e.data)};
   exportRecorder.onerror=()=>{audio.pause();audio.currentTime=wasTime;cleanupExportSession();finishUI();toast('Export failed. Try again with this tab visible.')};
   exportRecorder.onstop=()=>{
