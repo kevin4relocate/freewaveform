@@ -10,6 +10,11 @@ const manifestKey=id=>`jobs/${id}/manifest.json`;
 async function readJson(bucket,key){const obj=await bucket.get(key);if(!obj)return null;try{return JSON.parse(await obj.text())}catch{return null}}
 async function writeJson(bucket,key,value){await bucket.put(key,JSON.stringify(value),{httpMetadata:{contentType:'application/json'}})}
 async function updateStatus(bucket,id,patch){const current=await readJson(bucket,statusKey(id))||{jobId:id,createdAt:now()};const next={...current,...patch,updatedAt:now()};await writeJson(bucket,statusKey(id),next);return next}
+async function listObjects(bucket,prefix){
+  const out=[];let cursor;
+  do{const page=await bucket.list({prefix,limit:1000,...(cursor?{cursor}:{})});out.push(...(page.objects||[]));cursor=page.truncated?page.cursor:null}while(cursor);
+  return out;
+}
 async function dispatchGitHub(env,jobId,apiBase){
   const repo=String(env.GITHUB_REPO||'').trim(),token=String(env.GITHUB_TOKEN||'').trim(),workflow=String(env.GITHUB_WORKFLOW||'hq-render.yml').trim(),ref=String(env.GITHUB_REF||'main').trim();
   if(!repo||!token)throw new Error('GITHUB_REPO / GITHUB_TOKEN is not configured');
@@ -43,6 +48,24 @@ async function handleStart(request,env){
 async function handleStatus(request,env,id){
   if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);const s=await readJson(env.HQ_BUCKET,statusKey(id));if(!s)return json({error:'HQ job not found'},404);const out={jobId:id,state:s.state||'queued',progress:+s.progress||0,message:s.message||'',fileName:s.fileName||'freewaveform-hq.mp4',updatedAt:s.updatedAt||s.createdAt};if(s.state==='ready'&&s.downloadToken)out.downloadUrl=`/api/hq/download/${encodeURIComponent(id)}?token=${encodeURIComponent(s.downloadToken)}`;return json(out)
 }
+async function handleList(request,env){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  const objects=await listObjects(env.HQ_BUCKET,'jobs/'),groups=new Map();
+  for(const obj of objects){const m=/^jobs\/([^/]+)\//.exec(obj.key);if(!m)continue;const id=m[1];if(!groups.has(id))groups.set(id,{jobId:id,totalBytes:0,latest:null});const g=groups.get(id);g.totalBytes+=(+obj.size||0);const uploaded=obj.uploaded?new Date(obj.uploaded).toISOString():null;if(uploaded&&(!g.latest||uploaded>g.latest))g.latest=uploaded}
+  const jobs=(await Promise.all([...groups.values()].map(async g=>{const [s,m]=await Promise.all([readJson(env.HQ_BUCKET,statusKey(g.jobId)),readJson(env.HQ_BUCKET,manifestKey(g.jobId))]);if(!s)return null;const item={jobId:g.jobId,state:s.state||'queued',progress:+s.progress||0,message:s.message||'',createdAt:s.createdAt||m?.createdAt||g.latest,updatedAt:s.updatedAt||g.latest,expiresAt:s.expiresAt||null,fileName:s.fileName||m?.fileName||'freewaveform-hq.mp4',sourceName:m?.assets?.audio?.name||'',outputBytes:+s.size||0,totalBytes:g.totalBytes};if(item.state==='ready'&&s.downloadToken)item.downloadUrl=`/api/hq/download/${encodeURIComponent(g.jobId)}?token=${encodeURIComponent(s.downloadToken)}`;return item}))).filter(Boolean).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  return json({jobs,totalBytes:jobs.reduce((sum,j)=>sum+(j.totalBytes||0),0)});
+}
+async function handleDelete(request,env,id){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  if(!/^[a-zA-Z0-9-]{6,80}$/.test(String(id||'')))return json({error:'Invalid HQ job id'},400);
+  const s=await readJson(env.HQ_BUCKET,statusKey(id));if(s&&['queued','rendering'].includes(s.state))return json({error:'This HQ render is still running. Wait until it finishes before deleting it.'},409);
+  const objects=await listObjects(env.HQ_BUCKET,`jobs/${id}/`);if(!objects.length)return json({error:'HQ job not found'},404);
+  const keys=objects.map(o=>o.key),freedBytes=objects.reduce((sum,o)=>sum+(+o.size||0),0);
+  for(let i=0;i<keys.length;i+=1000)await env.HQ_BUCKET.delete(keys.slice(i,i+1000));
+  return json({ok:true,jobId:id,deletedObjects:keys.length,freedBytes});
+}
 async function handleJob(request,env,id){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);const m=await readJson(env.HQ_BUCKET,manifestKey(id));if(!m)return json({error:'HQ job not found'},404);await updateStatus(env.HQ_BUCKET,id,{state:'rendering',progress:3,message:'Renderer started'});return json(m)}
 async function handleAsset(request,env,id,field){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);const m=await readJson(env.HQ_BUCKET,manifestKey(id)),asset=m?.assets?.[field];if(!asset)return json({error:'Asset not found'},404);const obj=await env.HQ_BUCKET.get(asset.key);if(!obj)return json({error:'Asset missing from R2'},404);const h=new Headers();obj.writeHttpMetadata(h);h.set('cache-control','private, max-age=3600');h.set('content-disposition',`inline; filename="${safe(asset.name)}"`);return new Response(obj.body,{headers:h})}
 async function handleProgress(request,env,id){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);let body={};try{body=await request.json()}catch{}const progress=Math.max(3,Math.min(96,Number(body.progress)||3));await updateStatus(env.HQ_BUCKET,id,{state:'rendering',progress,message:String(body.message||'Rendering HQ MP4').slice(0,160)});return json({ok:true})}
@@ -50,5 +73,5 @@ async function handleComplete(request,env,id){if(!runnerAuthorized(request,env))
 async function handleFail(request,env,id){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);let body={};try{body=await request.json()}catch{}await updateStatus(env.HQ_BUCKET,id,{state:'failed',progress:0,message:String(body.message||'HQ renderer failed').slice(0,300)});return json({ok:true})}
 async function handleDownload(request,env,id){const s=await readJson(env.HQ_BUCKET,statusKey(id)),token=new URL(request.url).searchParams.get('token');if(!s||s.state!=='ready'||!token||token!==s.downloadToken)return json({error:'Invalid or expired download'},403);const m=await readJson(env.HQ_BUCKET,manifestKey(id)),obj=m&&await env.HQ_BUCKET.get(m.resultKey);if(!obj)return json({error:'Rendered MP4 not found'},404);const h=new Headers();obj.writeHttpMetadata(h);h.set('content-type','video/mp4');h.set('content-disposition',`attachment; filename="${safe(m.fileName||'freewaveform-hq.mp4')}"`);h.set('cache-control','private, no-store');return new Response(obj.body,{headers:h})}
 export async function onRequest({request,env,params}){
-  try{const p=parts(params),method=request.method.toUpperCase();if(method==='POST'&&p[0]==='start')return handleStart(request,env);if(method==='GET'&&p[0]==='status'&&p[1])return handleStatus(request,env,p[1]);if(method==='GET'&&p[0]==='job'&&p[1])return handleJob(request,env,p[1]);if(method==='GET'&&p[0]==='asset'&&p[1]&&p[2])return handleAsset(request,env,p[1],p[2]);if(method==='POST'&&p[0]==='progress'&&p[1])return handleProgress(request,env,p[1]);if(method==='POST'&&p[0]==='complete'&&p[1])return handleComplete(request,env,p[1]);if(method==='POST'&&p[0]==='fail'&&p[1])return handleFail(request,env,p[1]);if(method==='GET'&&p[0]==='download'&&p[1])return handleDownload(request,env,p[1]);return json({error:'HQ API route not found'},404)}catch(err){console.error(err);return json({error:String(err?.message||err)},500)}
+  try{const p=parts(params),method=request.method.toUpperCase();if(method==='POST'&&p[0]==='start')return handleStart(request,env);if(method==='GET'&&p[0]==='list')return handleList(request,env);if(method==='GET'&&p[0]==='status'&&p[1])return handleStatus(request,env,p[1]);if(method==='DELETE'&&p[0]==='job'&&p[1])return handleDelete(request,env,p[1]);if(method==='GET'&&p[0]==='job'&&p[1])return handleJob(request,env,p[1]);if(method==='GET'&&p[0]==='asset'&&p[1]&&p[2])return handleAsset(request,env,p[1],p[2]);if(method==='POST'&&p[0]==='progress'&&p[1])return handleProgress(request,env,p[1]);if(method==='POST'&&p[0]==='complete'&&p[1])return handleComplete(request,env,p[1]);if(method==='POST'&&p[0]==='fail'&&p[1])return handleFail(request,env,p[1]);if(method==='GET'&&p[0]==='download'&&p[1])return handleDownload(request,env,p[1]);return json({error:'HQ API route not found'},404)}catch(err){console.error(err);return json({error:String(err?.message||err)},500)}
 }
