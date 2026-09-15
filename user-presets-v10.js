@@ -15,7 +15,7 @@ const waveShapes=new Set(window.__FW_WAVE_CONFIG?.SHAPE_OPTIONS?.map(x=>x[0])||[
 const plateShapes=new Set(['blob','circle','rounded','diamond','follow']);
 const plateTones=new Set(['dark','light','auto','custom']);
 const defaults=window.__FW_MULTI_WAVE?.defaults||{
-  wave:{style:'brushRing',shape:'circle',reaction:130,beatPunch:150,beatSensitivity:135,smoothing:55,glow:16,size:46,thickness:4,opacity:78,detail:128,toothDepth:80,sharpness:70,color:'#e5d3a6',showWave:true,showGlow:true,showSecondary:false,x:50,y:50},
+  wave:{style:'brushRing',shape:'circle',reaction:130,beatPunch:150,beatSensitivity:135,smoothing:55,glow:16,size:46,maxSize:70,thickness:4,opacity:78,detail:128,toothDepth:80,sharpness:70,color:'#e5d3a6',showWave:true,showGlow:true,showSecondary:false,x:50,y:50},
   plate:{enabled:false,shape:'blob',tone:'dark',size:82,opacity:88,softness:4,shadow:12,color:'#17191c'}
 };
 
@@ -39,13 +39,13 @@ function sanitizePlate(p={},legacy=false){
   };
 }
 function sanitizeWave(w={},index=0,legacyPlate){
-  const d=defaults.wave;
+  const d=defaults.wave,size=num(w.size,d.size,12,85);
   return{
     name:String(w.name||`Wave ${index+1}`).slice(0,30),template:String(w.template||''),
     style:waveStyles.has(w.style)?w.style:d.style,shape:waveShapes.has(w.shape)?w.shape:d.shape,
     reaction:num(w.reaction,d.reaction,0,400),beatPunch:num(w.beatPunch,d.beatPunch,0,300),
     beatSensitivity:num(w.beatSensitivity,d.beatSensitivity,50,250),smoothing:num(w.smoothing,d.smoothing,0,95),
-    glow:num(w.glow,d.glow,0,100),size:num(w.size,d.size,12,85),thickness:num(w.thickness,d.thickness,1,16),
+    glow:num(w.glow,d.glow,0,100),size,maxSize:num(w.maxSize,Math.max(d.maxSize||70,size),size,100),thickness:num(w.thickness,d.thickness,1,16),
     opacity:num(w.opacity,d.opacity,5,100),detail:num(w.detail,d.detail,16,256),toothDepth:num(w.toothDepth,d.toothDepth,0,220),
     sharpness:num(w.sharpness,d.sharpness,0,100),color:validColor(w.color,d.color),showWave:w.showWave!==false,
     showGlow:w.showGlow!==false,showSecondary:!!w.showSecondary,x:num(w.x,50,3,97),y:num(w.y,50,3,97),
@@ -96,7 +96,7 @@ function setTextField(card,key,value){const e=card.querySelector(`[data-k="${key
 function twoFrames(){return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))}
 async function restoreTexts(texts){if(!Array.isArray(texts))return;ensureTextCount(texts.length);if(!texts.length){window.__FW_TEXT_BRIDGE?.reset?.();return}window.__FW_TEXT_BRIDGE?.enhanceAll?.();const cards=[...document.querySelectorAll('#textList .text-card')];texts.forEach((t,i)=>{const c=cards[i];if(!c)return;setTextField(c,'show',t.show);setTextField(c,'text',t.text);setTextField(c,'font',t.font);setTextField(c,'color',t.color);setTextField(c,'size',t.size);setTextField(c,'opacity',t.opacity);setTextField(c,'react',String(!!t.react));setTextField(c,'strength',t.strength)});await twoFrames();texts.forEach((t,i)=>{if(Number.isFinite(t.x)&&Number.isFinite(t.y))window.__FW_TEXT_BRIDGE?.moveTextTo?.(i,t.x,t.y)})}
 async function applyProject(project){if(!project)return;document.querySelector(`[data-ratio="${project.ratio}"]`)?.click();const r=project.reactive;const scope=$('reactScope'),sync=$('syncMode'),punch=$('scenePunch');if(scope){scope.value=r.scope;fire(scope,'change')}if(sync){sync.value=r.syncMode;fire(sync,'change')}if(punch){punch.value=r.scenePunch;fire(punch,'input')}window.__FW_MULTI_WAVE?.setLayers?.(project.waveLayers,project.waveActiveIndex);window.__FW_WAVE_LOOK?.setConfig?.(project.waveLook);await restoreTexts(project.texts)}
-function applyLegacyValues(values){if(!values||typeof values!=='object')return;const map={waveStyle:'change',waveShape:'change',waveReaction:'input',beatPunch:'input',beatSensitivity:'input',waveSmoothing:'input',waveGlow:'input',waveSize:'input',waveThickness:'input',waveOpacity:'input',waveDetail:'input',toothDepth:'input',waveSharpness:'input',waveColor:'input',showWave:'change',showGlow:'change',showSecondary:'change',reactScope:'change',syncMode:'change',scenePunch:'input'};Object.entries(map).forEach(([id,type])=>{if(values[id]===undefined)return;const e=$(id);if(!e)return;if(e.type==='checkbox')e.checked=!!values[id];else e.value=values[id];fire(e,type)})}
+function applyLegacyValues(values){if(!values||typeof values!=='object')return;const map={waveStyle:'change',waveShape:'change',waveReaction:'input',beatPunch:'input',beatSensitivity:'input',waveSmoothing:'input',waveGlow:'input',waveSize:'input',waveMaxSize:'input',waveThickness:'input',waveOpacity:'input',waveDetail:'input',toothDepth:'input',waveSharpness:'input',waveColor:'input',showWave:'change',showGlow:'change',showSecondary:'change',reactScope:'change',syncMode:'change',scenePunch:'input'};Object.entries(map).forEach(([id,type])=>{if(values[id]===undefined)return;const e=$(id);if(!e)return;if(e.type==='checkbox')e.checked=!!values[id];else e.value=values[id];fire(e,type)})}
 
 let root=null;
 function render(){if(!root)return;const items=loadAll(),list=root.querySelector('.user-preset-list'),count=root.querySelector('.user-preset-count');count.textContent=items.length+' / '+MAX_PRESETS;if(!items.length){list.innerHTML='<div class="user-preset-empty">No saved layout presets yet.</div>';return}list.innerHTML=items.map(p=>`<div class="user-preset-item" data-id="${esc(p.id)}"><button class="user-preset-load" type="button" title="Load preset"><span class="user-preset-icon">★</span><span><b>${esc(p.name)}</b><small>${esc(formatDate(p.updatedAt||p.createdAt))}</small></span></button><button class="user-preset-delete" type="button" title="Delete preset">×</button></div>`).join('')}

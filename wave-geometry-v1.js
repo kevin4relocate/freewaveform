@@ -77,10 +77,11 @@ function localPunch(q,r,w){
   const p=punch(r,w),spec=spectrumSample(q,r),band=broadBand(q,r),focus=spec==null?band:Math.max(spec,band*.65);
   return p*clamp(.035+Math.pow(clamp(focus*1.3,0,1.4),1.5)*.68+band*.18,.035,.95);
 }
+function maxScale(w){const base=Math.max(1,+w?.size||1),limit=Math.max(base,Number.isFinite(+w?.maxSize)?+w.maxSize:70);return clamp(limit/base,1,8)}
 function ringScale(w,r,t,i=0,rough=0){
   const dep=w.toothDepth/100,b=Math.pow(pseudoBin(t,r,w),lerp(.72,2.05,w.sharpness/100)),p=localPunch(t,r,w),tri=1-Math.abs(((t*w.detail)%1)*2-1),tooth=(Math.pow(clamp(tri,0,1),lerp(.7,5.4,w.sharpness/100))-.28)*dep*.06;
   const reactive=clamp(b*(w.reaction/100)*1.08+p,0,4.6),reach=.064+clamp(dep,0,2.2)*.058;
-  return 1+reactive*reach+tooth+(rough?Math.sin(i*2.31)*rough*.01:0);
+  const raw=1+reactive*reach+tooth+(rough?Math.sin(i*2.31)*rough*.01:0);return Math.min(raw,maxScale(w));
 }
 function beginRingPath(ctx,w,r,cx,cy,rad,rough=0){
   const N=Math.max(160,Math.round(w.detail*2.5));ctx.beginPath();
@@ -89,7 +90,7 @@ function beginRingPath(ctx,w,r,cx,cy,rad,rough=0){
 }
 function radialExtension(w,r,t){
   const depth=w.toothDepth/100,b=pseudoBin(t,r,w),p=localPunch(t,r,w);
-  return clamp(b*(.105+depth*.17)*(w.reaction/100)+p*(.07+depth*.075),0,1.25);
+  const limit=Math.max(0,maxScale(w)-1-.018);return clamp(b*(.105+depth*.17)*(w.reaction/100)+p*(.07+depth*.075),0,Math.min(1.25,limit));
 }
 function beginRadialEnvelopePath(ctx,w,r,cx,cy,rad){
   const N=clamp(Math.round(w.detail),24,256);ctx.beginPath();

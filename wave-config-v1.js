@@ -6,7 +6,7 @@ const DEFAULT_FILL={enabled:false,color:'#17191c',opacity:88};
 // wave-fill-v1.js uses enabled/color/opacity from it as the waveform's reactive Fill state.
 const DEFAULT_PLATE={enabled:false,shape:'follow',tone:'custom',size:100,opacity:88,softness:0,shadow:0,color:'#17191c'};
 const DEFAULT_WAVE={
-  template:'ink',style:'brushRing',shape:'circle',size:46,thickness:4,opacity:78,
+  template:'ink',style:'brushRing',shape:'circle',size:46,maxSize:70,thickness:4,opacity:78,
   smoothing:55,reaction:130,beatPunch:150,beatSensitivity:135,glow:16,
   detail:128,toothDepth:80,sharpness:70,color:'#e5d3a6',showWave:true,showGlow:true,showSecondary:false,
   x:50,y:50,plate:{...DEFAULT_PLATE}
