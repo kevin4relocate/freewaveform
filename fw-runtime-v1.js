@@ -1,6 +1,22 @@
 (()=>{
 'use strict';
 
+const nativeRAF=window.requestAnimationFrame.bind(window);
+let pauseMainRender=false;
+window.requestAnimationFrame=function(callback){
+  let id=0;
+  const wrapped=time=>{
+    if(pauseMainRender&&callback?.name==='render'){
+      id=nativeRAF(wrapped);
+      return;
+    }
+    callback(time);
+  };
+  id=nativeRAF(wrapped);
+  return id;
+};
+window.__FW_HQ_RAF={setPaused(value){pauseMainRender=!!value},isPaused(){return pauseMainRender}};
+
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const normalizeHex=value=>{

@@ -1,0 +1,83 @@
+name: FreeWaveform HQ MP4 Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: HQ render job id
+        required: true
+        type: string
+      api_base:
+        description: FreeWaveform Pages origin
+        required: true
+        type: string
+
+concurrency:
+  group: freewaveform-hq-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    env:
+      JOB_ID: ${{ inputs.job_id }}
+      API_BASE: ${{ inputs.api_base }}
+      HQ_RENDER_TOKEN: ${{ secrets.HQ_RENDER_TOKEN }}
+    steps:
+      - name: Checkout renderer
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install renderer dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Render deterministic 1080p30 frames
+        run: npm run render:hq
+
+      - name: Ensure AWS CLI
+        run: |
+          if ! command -v aws >/dev/null 2>&1; then
+            python3 -m pip install --user awscli
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Upload MP4 to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          aws s3 cp .hq-output/output.mp4 "s3://${R2_BUCKET}/jobs/${JOB_ID}/output.mp4" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+            --content-type video/mp4 \
+            --no-progress
+
+      - name: Mark HQ render ready
+        run: |
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${HQ_RENDER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"message":"HQ MP4 ready"}' \
+            "${API_BASE}/api/hq/complete/${JOB_ID}"
+
+      - name: Mark HQ render failed
+        if: failure()
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${HQ_RENDER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"message":"GitHub Actions HQ renderer failed. Check the workflow log."}' \
+            "${API_BASE}/api/hq/fail/${JOB_ID}" || true
