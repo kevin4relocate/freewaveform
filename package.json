@@ -1,0 +1,12 @@
+{
+  "name": "freewaveform-hq-renderer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render:hq": "node scripts/hq-render.mjs"
+  },
+  "dependencies": {
+    "fft.js": "^4.0.4",
+    "playwright": "^1.55.0"
+  }
+}
