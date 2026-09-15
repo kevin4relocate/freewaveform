@@ -22,8 +22,8 @@ const state={
 
 let audioUrl='',imageDrag=null;
 let audioCtx=null,sourceNode=null,analyser=null,mediaDest=null,freqData=null,prevSpectrum=null;
-let manualTime=0,exporting=false,exportRecorder=null,exportChunks=[];
-let lastBass=0,energyBaseline=.04,beatEnvelope=0,lastBeatAt=0,frameCounter=0;
+let manualTime=0,exporting=false,exportRecorder=null,exportChunks=[],exportVideoStream=null,exportAudioTrack=null;
+let lastBass=0,energyBaseline=.04,beatEnvelope=0,lastBeatAt=0,frameCounter=0,timelineLastPaint=0;
 
 const fonts={
   serifCN:'"Noto Serif SC","Songti SC","STSong",serif',calligraphy:'"Ma Shan Zheng","Kaiti SC","STKaiti",cursive',
@@ -106,7 +106,7 @@ function energy(){
   if(raw>.34&&now-lastBeatAt>62){beatEnvelope=Math.max(beatEnvelope,raw);lastBeatAt=now}else beatEnvelope=Math.max(raw*.64,beatEnvelope*(state.reactive.syncMode==='transient'?.74:.80));
   return{bass,mid,treble,beat:clamp(beatEnvelope,0,1.8),bins:freqData,flux,time:audio.currentTime||performance.now()/1000};
 }
-function updateMeters(r){if((frameCounter++%2)!==0)return;[['meterBass',r.bass],['meterMid',r.mid],['meterTreble',r.treble],['meterBeat',r.beat/1.3]].forEach(([id,v])=>{const el=$('#'+id);if(el)el.style.width=(clamp(v,0,1)*100).toFixed(1)+'%'})}
+function updateMeters(r){if(exporting||(frameCounter++%2)!==0)return;[['meterBass',r.bass],['meterMid',r.mid],['meterTreble',r.treble],['meterBeat',r.beat/1.3]].forEach(([id,v])=>{const el=$('#'+id);if(el)el.style.width=(clamp(v,0,1)*100).toFixed(1)+'%'})}
 
 function drawBackground(r,reactive=false){
   const w=canvas.width,h=canvas.height,b=state.bg;ctx.save();if(reactive){const pulse=clamp(r.beat*(state.reactive.scenePunch/100),0,.2);ctx.translate(w/2,h/2);ctx.scale(1+pulse,1+pulse);ctx.translate(-w/2,-h/2)}
@@ -147,12 +147,41 @@ canvas.addEventListener('pointermove',e=>{if(!imageDrag)return;const r=canvas.ge
 canvas.addEventListener('pointerup',()=>{imageDrag=null;canvas.style.cursor=state.tool==='image'?'grab':state.tool==='waveform'&&!isEdgeStyle()?'move':'default'});canvas.addEventListener('pointercancel',()=>{imageDrag=null});
 canvas.addEventListener('wheel',e=>{if(state.tool==='image'&&state.image){e.preventDefault();state.bg.zoom=clamp(state.bg.zoom+(e.deltaY<0?8:-8),50,300);$('#imageZoom').value=state.bg.zoom;$('#imageZoomValue').textContent=Math.round(state.bg.zoom)+'%'}},{passive:false});
 
-function updateTimeline(){const d=Number.isFinite(audio.duration)?audio.duration:0,t=Number.isFinite(audio.currentTime)?audio.currentTime:manualTime,q=d?t/d:0;$('#playBtn').textContent=audio.paused?'Play':'Pause';$('#timelinePlay').textContent=audio.paused?'▶':'Ⅱ';$('#audioSeek').value=Math.round(q*1000);$('#timelineSeek').value=Math.round(q*1000);$('#timelineTime').textContent=fmt(t)+' / '+fmt(d);requestAnimationFrame(updateTimeline)}
+function updateTimeline(){
+  const now=performance.now();
+  if(!exporting||now-timelineLastPaint>=250){
+    timelineLastPaint=now;const d=Number.isFinite(audio.duration)?audio.duration:0,t=Number.isFinite(audio.currentTime)?audio.currentTime:manualTime,q=d?t/d:0;
+    $('#playBtn').textContent=audio.paused?'Play':'Pause';$('#timelinePlay').textContent=audio.paused?'▶':'Ⅱ';$('#audioSeek').value=Math.round(q*1000);$('#timelineSeek').value=Math.round(q*1000);$('#timelineTime').textContent=fmt(t)+' / '+fmt(d);
+  }
+  requestAnimationFrame(updateTimeline);
+}
+function cleanupExportSession(){
+  try{exportVideoStream?.getTracks?.().forEach(track=>track.stop())}catch{}
+  try{exportAudioTrack?.stop?.()}catch{}
+  exportVideoStream=null;exportAudioTrack=null;exportRecorder=null;exportChunks=[];
+}
 async function exportFullTrack(){
-  if(exporting){toast('Export already running');return}if(!audio.src||!Number.isFinite(audio.duration)){toast('Upload audio first');return}if(!window.MediaRecorder){toast('MediaRecorder is not supported');return}await ensureAudioGraph();exporting=true;$('#exportBtn').disabled=true;$('#exportBtn').textContent='Exporting…';
-  const video=canvas.captureStream(30),stream=new MediaStream([...video.getVideoTracks(),...mediaDest.stream.getAudioTracks()]);let mime='video/webm';for(const m of['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'])if(MediaRecorder.isTypeSupported(m)){mime=m;break}
-  exportChunks=[];exportRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:10000000});exportRecorder.ondataavailable=e=>{if(e.data.size)exportChunks.push(e.data)};exportRecorder.onstop=()=>{const blob=new Blob(exportChunks,{type:mime}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='freewaveform-'+Date.now()+'.webm';a.click();setTimeout(()=>URL.revokeObjectURL(u),3000);exporting=false;$('#exportBtn').disabled=false;$('#exportBtn').textContent='Export WebM';toast('Export finished')};
-  const wasTime=audio.currentTime;audio.pause();audio.currentTime=0;await new Promise(r=>setTimeout(r,120));exportRecorder.start(1000);await audio.play();const stop=()=>{if(exportRecorder&&exportRecorder.state!=='inactive')exportRecorder.stop();audio.currentTime=wasTime;audio.pause()};audio.addEventListener('ended',stop,{once:true});toast('Recording full track in real time');
+  if(exporting){toast('Export already running');return}if(!audio.src||!Number.isFinite(audio.duration)){toast('Upload audio first');return}if(!window.MediaRecorder){toast('MediaRecorder is not supported');return}await ensureAudioGraph();
+  exporting=true;$('#exportBtn').disabled=true;$('#exportBtn').textContent='Rendering…';
+  exportVideoStream=canvas.captureStream(30);const videoTrack=exportVideoStream.getVideoTracks()[0];if(videoTrack&&'contentHint'in videoTrack)videoTrack.contentHint='motion';
+  const sourceAudioTrack=mediaDest.stream.getAudioTracks()[0];exportAudioTrack=sourceAudioTrack?.clone?.()||sourceAudioTrack||null;
+  const stream=new MediaStream([...exportVideoStream.getVideoTracks(),...(exportAudioTrack?[exportAudioTrack]:[])]);
+  let mime='video/webm';for(const m of['video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus','video/webm'])if(MediaRecorder.isTypeSupported(m)){mime=m;break}
+  exportChunks=[];exportRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8000000,audioBitsPerSecond:192000});
+  const wasTime=audio.currentTime;
+  const finishUI=()=>{exporting=false;$('#exportBtn').disabled=false;$('#exportBtn').textContent='Export WebM'};
+  exportRecorder.ondataavailable=e=>{if(e.data.size)exportChunks.push(e.data)};
+  exportRecorder.onerror=()=>{audio.pause();audio.currentTime=wasTime;cleanupExportSession();finishUI();toast('Export failed. Try again with this tab visible.')};
+  exportRecorder.onstop=()=>{
+    const chunks=exportChunks.slice(),type=mime;cleanupExportSession();finishUI();
+    if(!chunks.length){toast('Export produced no video data');return}
+    const blob=new Blob(chunks,{type}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='freewaveform-'+Date.now()+'.webm';a.click();setTimeout(()=>URL.revokeObjectURL(u),3000);toast('Export finished');
+  };
+  audio.pause();audio.currentTime=0;energyBaseline=.04;beatEnvelope=0;lastBass=0;await new Promise(r=>setTimeout(r,140));
+  exportRecorder.start(1000);
+  try{await audio.play()}catch{if(exportRecorder?.state!=='inactive')exportRecorder.stop();return}
+  const stop=()=>{if(exportRecorder&&exportRecorder.state!=='inactive')exportRecorder.stop();audio.currentTime=wasTime;audio.pause()};
+  audio.addEventListener('ended',stop,{once:true});toast('Rendering full track at a stable 30 FPS');
 }
 $('#exportBtn').addEventListener('click',exportFullTrack);
 
@@ -162,7 +191,7 @@ function resetProject(){
 function initReactiveValues(){$('#reactScope').value=state.reactive.scope;$('#syncMode').value=state.reactive.syncMode;$('#scenePunch').value=state.reactive.scenePunch;$('#scenePunchValue').textContent=state.reactive.scenePunch+'%';updateAnalyserSettings()}
 $('#resetProject').addEventListener('click',resetProject);
 
-window.__FW_APP={getState:()=>state,sampleBackgroundColor,updateAnalyserSettings,switchTool,setRatio};
+window.__FW_APP={getState:()=>state,sampleBackgroundColor,updateAnalyserSettings,switchTool,setRatio,isExporting:()=>exporting};
 
 initAudioUI();initImageUI();initReactiveUI();initTextUI();setRatio('16:9');switchTool('audio');updateTimeline();render();
 })();
