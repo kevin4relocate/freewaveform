@@ -7,6 +7,9 @@ function exportAuthorized(request,env){const expected=String(env.HQ_EXPORT_KEY||
 function runnerAuthorized(request,env){const expected=String(env.HQ_RENDER_TOKEN||'').trim(),auth=request.headers.get('authorization')||'';return!!expected&&auth===`Bearer ${expected}`}
 const statusKey=id=>`jobs/${id}/status.json`;
 const manifestKey=id=>`jobs/${id}/manifest.json`;
+const templateKey=id=>`templates/${id}/template.json`;
+const defaultTemplateKey='templates/default.json';
+const validTemplateId=id=>/^[a-zA-Z0-9-]{6,80}$/.test(String(id||''));
 async function readJson(bucket,key){const obj=await bucket.get(key);if(!obj)return null;try{return JSON.parse(await obj.text())}catch{return null}}
 async function writeJson(bucket,key,value){await bucket.put(key,JSON.stringify(value),{httpMetadata:{contentType:'application/json'}})}
 async function updateStatus(bucket,id,patch){const current=await readJson(bucket,statusKey(id))||{jobId:id,createdAt:now()};const next={...current,...patch,updatedAt:now()};await writeJson(bucket,statusKey(id),next);return next}
@@ -14,6 +17,11 @@ async function listObjects(bucket,prefix){
   const out=[];let cursor;
   do{const page=await bucket.list({prefix,limit:1000,...(cursor?{cursor}:{})});out.push(...(page.objects||[]));cursor=page.truncated?page.cursor:null}while(cursor);
   return out;
+}
+async function deletePrefix(bucket,prefix){
+  const objects=await listObjects(bucket,prefix),keys=objects.map(o=>o.key);
+  for(let i=0;i<keys.length;i+=1000)await bucket.delete(keys.slice(i,i+1000));
+  return{objects:keys.length,bytes:objects.reduce((sum,o)=>sum+(+o.size||0),0)};
 }
 async function dispatchGitHub(env,jobId,apiBase){
   const repo=String(env.GITHUB_REPO||'').trim(),token=String(env.GITHUB_TOKEN||'').trim(),workflow=String(env.GITHUB_WORKFLOW||'hq-render.yml').trim(),ref=String(env.GITHUB_REF||'main').trim();
@@ -66,6 +74,74 @@ async function handleDelete(request,env,id){
   for(let i=0;i<keys.length;i+=1000)await env.HQ_BUCKET.delete(keys.slice(i,i+1000));
   return json({ok:true,jobId:id,deletedObjects:keys.length,freedBytes});
 }
+async function handleTemplateList(request,env){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  const objects=await listObjects(env.HQ_BUCKET,'templates/'),keys=objects.map(o=>o.key).filter(k=>/^templates\/[^/]+\/template\.json$/.test(k));
+  const rows=(await Promise.all(keys.map(k=>readJson(env.HQ_BUCKET,k)))).filter(Boolean).map(t=>({id:t.id,name:t.name,createdAt:t.createdAt,updatedAt:t.updatedAt,assetCount:Object.keys(t.assets||{}).length})).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+  const def=await readJson(env.HQ_BUCKET,defaultTemplateKey);
+  return json({templates:rows,defaultId:def?.id||''});
+}
+async function handleTemplateSave(request,env){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  let form;try{form=await request.formData()}catch{return json({error:'Invalid multipart request'},400)}
+  const name=String(form.get('name')||'').trim().slice(0,60);if(!name)return json({error:'Template name is required'},400);
+  const rawProject=form.get('project');if(typeof rawProject!=='string')return json({error:'Missing template project'},400);
+  let project;try{project=JSON.parse(rawProject)}catch{return json({error:'Invalid template project'},400)}
+  let id=String(form.get('id')||'').trim();if(id&&!validTemplateId(id))return json({error:'Invalid template id'},400);if(!id)id=crypto.randomUUID();
+  const existing=await readJson(env.HQ_BUCKET,templateKey(id)),createdAt=existing?.createdAt||now(),assets={},stamp=Date.now().toString(36);
+  try{
+    for(const [field,value] of form.entries()){
+      if(!(value instanceof File)||!value.size)continue;
+      if(value.size>20*1024*1024)throw new Error(`${field} is too large for a template`);
+      const fileName=safe(value.name||field),key=`templates/${id}/assets/${stamp}-${safe(field)}-${fileName}`;
+      await env.HQ_BUCKET.put(key,value.stream(),{httpMetadata:{contentType:value.type||'application/octet-stream'}});
+      assets[field]={field,key,name:fileName,type:value.type||'application/octet-stream',size:value.size};
+    }
+    const doc={version:1,id,name,createdAt,updatedAt:now(),project,assets};
+    await writeJson(env.HQ_BUCKET,templateKey(id),doc);
+    const keep=new Set(Object.values(assets).map(a=>a.key)),oldKeys=Object.values(existing?.assets||{}).map(a=>a?.key).filter(Boolean).filter(k=>!keep.has(k));
+    if(oldKeys.length)await env.HQ_BUCKET.delete(oldKeys);
+    return json({ok:true,id,name,createdAt,updatedAt:doc.updatedAt,assetCount:Object.keys(assets).length});
+  }catch(err){return json({error:String(err?.message||err)},500)}
+}
+async function resolveTemplateId(bucket,id){
+  if(id!=='default')return id;
+  const def=await readJson(bucket,defaultTemplateKey);return def?.id||'';
+}
+async function handleTemplateGet(request,env,id){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  id=await resolveTemplateId(env.HQ_BUCKET,id);if(!id||!validTemplateId(id))return json({error:'Production template not found'},404);
+  const doc=await readJson(env.HQ_BUCKET,templateKey(id));if(!doc)return json({error:'Production template not found'},404);
+  const assetUrls={};for(const field of Object.keys(doc.assets||{}))assetUrls[field]=`/api/hq/template-asset/${encodeURIComponent(id)}/${encodeURIComponent(field)}`;
+  const def=await readJson(env.HQ_BUCKET,defaultTemplateKey);
+  return json({id:doc.id,name:doc.name,createdAt:doc.createdAt,updatedAt:doc.updatedAt,project:doc.project,assetUrls,isDefault:def?.id===doc.id});
+}
+async function handleTemplateDefault(request,env,id){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  if(!validTemplateId(id))return json({error:'Invalid template id'},400);
+  const doc=await readJson(env.HQ_BUCKET,templateKey(id));if(!doc)return json({error:'Production template not found'},404);
+  await writeJson(env.HQ_BUCKET,defaultTemplateKey,{id,updatedAt:now()});return json({ok:true,id});
+}
+async function handleTemplateDelete(request,env,id){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!env.HQ_BUCKET)return json({error:'R2 binding HQ_BUCKET is not configured'},503);
+  if(!validTemplateId(id))return json({error:'Invalid template id'},400);
+  const doc=await readJson(env.HQ_BUCKET,templateKey(id));if(!doc)return json({error:'Production template not found'},404);
+  const removed=await deletePrefix(env.HQ_BUCKET,`templates/${id}/`),def=await readJson(env.HQ_BUCKET,defaultTemplateKey);
+  if(def?.id===id)await env.HQ_BUCKET.delete(defaultTemplateKey);
+  return json({ok:true,id,deletedObjects:removed.objects,freedBytes:removed.bytes});
+}
+async function handleTemplateAsset(request,env,id,field){
+  if(!exportAuthorized(request,env))return json({error:'Invalid HQ Export Key'},401);
+  if(!validTemplateId(id))return json({error:'Invalid template id'},400);
+  const doc=await readJson(env.HQ_BUCKET,templateKey(id)),asset=doc?.assets?.[field];if(!asset)return json({error:'Template asset not found'},404);
+  const obj=await env.HQ_BUCKET.get(asset.key);if(!obj)return json({error:'Template asset missing from R2'},404);
+  const h=new Headers();obj.writeHttpMetadata(h);h.set('cache-control','private, max-age=300');h.set('content-disposition',`inline; filename="${safe(asset.name)}"`);return new Response(obj.body,{headers:h});
+}
 async function handleJob(request,env,id){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);const m=await readJson(env.HQ_BUCKET,manifestKey(id));if(!m)return json({error:'HQ job not found'},404);await updateStatus(env.HQ_BUCKET,id,{state:'rendering',progress:3,message:'Renderer started'});return json(m)}
 async function handleAsset(request,env,id,field){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);const m=await readJson(env.HQ_BUCKET,manifestKey(id)),asset=m?.assets?.[field];if(!asset)return json({error:'Asset not found'},404);const obj=await env.HQ_BUCKET.get(asset.key);if(!obj)return json({error:'Asset missing from R2'},404);const h=new Headers();obj.writeHttpMetadata(h);h.set('cache-control','private, max-age=3600');h.set('content-disposition',`inline; filename="${safe(asset.name)}"`);return new Response(obj.body,{headers:h})}
 async function handleProgress(request,env,id){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);let body={};try{body=await request.json()}catch{}const progress=Math.max(3,Math.min(96,Number(body.progress)||3));await updateStatus(env.HQ_BUCKET,id,{state:'rendering',progress,message:String(body.message||'Rendering HQ MP4').slice(0,160)});return json({ok:true})}
@@ -73,5 +149,24 @@ async function handleComplete(request,env,id){if(!runnerAuthorized(request,env))
 async function handleFail(request,env,id){if(!runnerAuthorized(request,env))return json({error:'Unauthorized renderer'},401);let body={};try{body=await request.json()}catch{}await updateStatus(env.HQ_BUCKET,id,{state:'failed',progress:0,message:String(body.message||'HQ renderer failed').slice(0,300)});return json({ok:true})}
 async function handleDownload(request,env,id){const s=await readJson(env.HQ_BUCKET,statusKey(id)),token=new URL(request.url).searchParams.get('token');if(!s||s.state!=='ready'||!token||token!==s.downloadToken)return json({error:'Invalid or expired download'},403);const m=await readJson(env.HQ_BUCKET,manifestKey(id)),obj=m&&await env.HQ_BUCKET.get(m.resultKey);if(!obj)return json({error:'Rendered MP4 not found'},404);const h=new Headers();obj.writeHttpMetadata(h);h.set('content-type','video/mp4');h.set('content-disposition',`attachment; filename="${safe(m.fileName||'freewaveform-hq.mp4')}"`);h.set('cache-control','private, no-store');return new Response(obj.body,{headers:h})}
 export async function onRequest({request,env,params}){
-  try{const p=parts(params),method=request.method.toUpperCase();if(method==='POST'&&p[0]==='start')return handleStart(request,env);if(method==='GET'&&p[0]==='list')return handleList(request,env);if(method==='GET'&&p[0]==='status'&&p[1])return handleStatus(request,env,p[1]);if(method==='DELETE'&&p[0]==='job'&&p[1])return handleDelete(request,env,p[1]);if(method==='GET'&&p[0]==='job'&&p[1])return handleJob(request,env,p[1]);if(method==='GET'&&p[0]==='asset'&&p[1]&&p[2])return handleAsset(request,env,p[1],p[2]);if(method==='POST'&&p[0]==='progress'&&p[1])return handleProgress(request,env,p[1]);if(method==='POST'&&p[0]==='complete'&&p[1])return handleComplete(request,env,p[1]);if(method==='POST'&&p[0]==='fail'&&p[1])return handleFail(request,env,p[1]);if(method==='GET'&&p[0]==='download'&&p[1])return handleDownload(request,env,p[1]);return json({error:'HQ API route not found'},404)}catch(err){console.error(err);return json({error:String(err?.message||err)},500)}
+  try{
+    const p=parts(params),method=request.method.toUpperCase();
+    if(method==='POST'&&p[0]==='start')return handleStart(request,env);
+    if(method==='GET'&&p[0]==='list')return handleList(request,env);
+    if(method==='GET'&&p[0]==='status'&&p[1])return handleStatus(request,env,p[1]);
+    if(method==='DELETE'&&p[0]==='job'&&p[1])return handleDelete(request,env,p[1]);
+    if(method==='GET'&&p[0]==='job'&&p[1])return handleJob(request,env,p[1]);
+    if(method==='GET'&&p[0]==='asset'&&p[1]&&p[2])return handleAsset(request,env,p[1],p[2]);
+    if(method==='POST'&&p[0]==='progress'&&p[1])return handleProgress(request,env,p[1]);
+    if(method==='POST'&&p[0]==='complete'&&p[1])return handleComplete(request,env,p[1]);
+    if(method==='POST'&&p[0]==='fail'&&p[1])return handleFail(request,env,p[1]);
+    if(method==='GET'&&p[0]==='download'&&p[1])return handleDownload(request,env,p[1]);
+    if(method==='GET'&&p[0]==='template'&&p[1]==='list')return handleTemplateList(request,env);
+    if(method==='POST'&&p[0]==='template'&&p[1]==='save')return handleTemplateSave(request,env);
+    if(method==='POST'&&p[0]==='template'&&p[1]==='default'&&p[2])return handleTemplateDefault(request,env,p[2]);
+    if(method==='GET'&&p[0]==='template'&&p[1])return handleTemplateGet(request,env,p[1]);
+    if(method==='DELETE'&&p[0]==='template'&&p[1])return handleTemplateDelete(request,env,p[1]);
+    if(method==='GET'&&p[0]==='template-asset'&&p[1]&&p[2])return handleTemplateAsset(request,env,p[1],p[2]);
+    return json({error:'HQ API route not found'},404)
+  }catch(err){console.error(err);return json({error:String(err?.message||err)},500)}
 }
