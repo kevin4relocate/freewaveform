@@ -75,6 +75,7 @@ function field(card,key,value,event='input'){
  const input=card?.querySelector(`[data-k="${key}"]`);
  if(!input)return;input.value=String(value);input.dispatchEvent(new Event(event,{bubbles:true}));
 }
+let sceneDirty=true;
 function createText(title,artist){
  // Only Studio-created free-text layers are replaced. Advanced layers are left intact.
  const state=window.__FW_APP?.getState?.();
@@ -85,8 +86,9 @@ function createText(title,artist){
  for(const t of items){
    const add=$('#addText');if(!add)break;
    add.click();const idx=state.texts.length-1,entry=state.texts[idx];
-   if(!entry)continue;entry.ncsStudio=true;entry.label=idx===0?'Music Title':'Artist';
+   if(!entry)continue;entry.ncsStudio=true;entry.label=t.size>40?'Music Title':'Artist';
    const row=$(`#textList .text-card[data-index="${idx}"]`);
+   if(row?.querySelector('header strong'))row.querySelector('header strong').textContent=entry.label;
    field(row,'text',t.value);
    field(row,'font','sans','change');field(row,'color','#ffffff');
    field(row,'size',t.size);field(row,'opacity',96);
@@ -108,21 +110,26 @@ function applyStudio(){
    const selected=[...card.querySelectorAll('.ncs-effects input:checked')].map(e=>e.value).filter(t=>t!=='none');
    effectsApi.setLayers?.([],0);
    const allowed=new Set(effectsApi.types||[]);
-   for(const type of selected.slice(0,Math.min(8,effectsApi.maxLayers||8))){if(allowed.has(type))effectsApi.addLayer(type)}
+   let extras=0,base=0;const extraSet=new Set(['cc-feathers','cc-leaves','cc-hearts','cc-confetti','cc-butterflies','cc-meteor','cc-lightning','cc-halo']);
+   for(const type of selected){if(!allowed.has(type))continue;if(extraSet.has(type)){if(extras>=5)continue;extras++}else{if(base>=8)continue;base++}effectsApi.addLayer(type)}
  }
+ sceneDirty=false;
  toast('Studio scene applied. Preview your track and export.');
  return true;
 }
 el('.ncs-apply').addEventListener('click',applyStudio);
-el('.ncs-export').addEventListener('click',()=>{if(!$('#audioFile')?.files?.length){toast('Select your MP3 first');return}if(applyStudio())$('#exportBtn')?.click()});
-el('.ncs-export-hq').addEventListener('click',()=>{if(!$('#audioFile')?.files?.length){toast('Select your MP3 first');return}if(!applyStudio())return;const button=$('#hqExportBtn');if(button)button.click();else toast('HQ MP4 service is not configured')});
+el('.ncs-export').addEventListener('click',()=>{if(!$('#audioFile')?.files?.length){toast('Select your MP3 first');return}if((!sceneDirty||applyStudio()))$('#exportBtn')?.click()});
+el('.ncs-export-hq').addEventListener('click',()=>{if(!$('#audioFile')?.files?.length){toast('Select your MP3 first');return}if(sceneDirty&&!applyStudio())return;const button=$('#hqExportBtn');if(button)button.click();else toast('HQ MP4 service is not configured')});
 el('.ncs-open-wave').addEventListener('click',()=>$('[data-tool="waveform"]')?.click());
-card.querySelectorAll('.ncs-effects input').forEach(input=>input.addEventListener('change',()=>{
+card.querySelectorAll('.ncs-effects input').forEach(input=>input.addEventListener('change',()=>{sceneDirty=true;
  const selected=[...card.querySelectorAll('.ncs-effects input:checked')];
  if(input.value==='none'&&input.checked)selected.filter(x=>x!==input).forEach(x=>x.checked=false);
  else if(input.value!=='none'&&input.checked)card.querySelector('input[value=none]').checked=false;
  const active=[...card.querySelectorAll('.ncs-effects input:checked')].filter(x=>x.value!=='none');
  if(active.length>8){input.checked=false;toast('Choose up to 8 effects');}
+ const extras=active.filter(x=>['meteor','lightning','halo','confetti','butterflies','hearts'].includes(x.value));if(extras.length>5){input.checked=false;toast('Use up to 5 extra decor/energy effects');}
 }));
+card.addEventListener('input',e=>{if(e.target.closest('.ncs-effects'))return;sceneDirty=true});
+card.addEventListener('change',e=>{if(e.target.closest('.ncs-effects'))return;sceneDirty=true});
 window.__FW_NCS_STUDIO={applyStudio};
 })();
