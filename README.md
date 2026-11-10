@@ -1,8 +1,8 @@
 # FreeWaveform
 
-A browser-based audio-reactive waveform editor for music visualizers. Audio and images stay local in the browser.
+A browser-based audio-reactive waveform editor for music visualizers. Browser-only preview and WebM export keep audio/images local. **Optional HQ MP4 export uploads the audio and background assets to Cloudflare R2 and processes them on GitHub Actions.** Review your deployment policies and R2 retention settings before publishing.
 
-## Current workflow
+## Music Visualizer Studio (NCS-inspired)\n\nThe Audio tab now includes a quick studio where you upload MP3 + background, enter artist/title, pick an NCS-inspired circular spectrum and an optional environment such as snow, rain, wind, mist, smoke, snowflakes, petals, flowers, autumn leaves, fireflies, light rays, bubbles or embers. Choose Apply Studio Scene; inspect the preview, play your track, and export WebM locally or optional HQ MP4 through Cloudflare/GitHub Actions. The original advanced editor remains available.\n\nNCS is a style reference, not an affiliation or music license; only use music and imagery you are authorized to publish.\n\n## Current workflow
 
 1. Load local audio (MP3/WAV/M4A)
 2. Add an optional background image and adjust fit, zoom, darkness, blur and saturation
