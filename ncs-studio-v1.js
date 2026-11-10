@@ -21,8 +21,8 @@ const effects=[
  ['dust','✦ Dust'],['firefly','● Fireflies'],['sparkle','✧ Sparkles'],
  ['bubbles','○ Bubbles'],['embers','✴ Embers'],['bokeh','◯ Bokeh'],
  ['lightleak','◒ Light Leaks'],['rays','☀ Light Rays'],['frame','▣ Magic Frame'],
- ['meteor','☄ Meteors'],['lightning','ϟ Lightning'],['halo','◎ Halo'],
- ['confetti','▦ Confetti'],['butterflies','⋈ Butterflies'],['hearts','♥ Hearts']
+ ['cc-meteor','☄ Meteors'],['cc-lightning','ϟ Lightning'],['cc-halo','◎ Halo'],
+ ['cc-confetti','▦ Confetti'],['cc-butterflies','⋈ Butterflies'],['cc-hearts','♥ Hearts']
 ];
 const presetOptions=Object.entries(palettes).map(([id,p])=>`<option value="${id}">${p.name}</option>`).join('');
 const effectOptions=effects.map(([id,name])=>`<label class="ncs-fx-choice"><input type="checkbox" value="${id}" ${id==='snow'?'checked':''}>${name}</label>`).join('');
@@ -127,7 +127,7 @@ card.querySelectorAll('.ncs-effects input').forEach(input=>input.addEventListene
  else if(input.value!=='none'&&input.checked)card.querySelector('input[value=none]').checked=false;
  const active=[...card.querySelectorAll('.ncs-effects input:checked')].filter(x=>x.value!=='none');
  if(active.length>8){input.checked=false;toast('Choose up to 8 effects');}
- const extras=active.filter(x=>['meteor','lightning','halo','confetti','butterflies','hearts'].includes(x.value));if(extras.length>5){input.checked=false;toast('Use up to 5 extra decor/energy effects');}
+ const extras=active.filter(x=>['cc-meteor','cc-lightning','cc-halo','cc-confetti','cc-butterflies','cc-hearts'].includes(x.value));if(extras.length>5){input.checked=false;toast('Use up to 5 extra decor/energy effects');}
 }));
 card.addEventListener('input',e=>{if(e.target.closest('.ncs-effects'))return;sceneDirty=true});
 card.addEventListener('change',e=>{if(e.target.closest('.ncs-effects'))return;sceneDirty=true});
