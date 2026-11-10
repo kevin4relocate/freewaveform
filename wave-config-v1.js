@@ -13,6 +13,7 @@ const DEFAULT_WAVE={
 };
 const STYLE_OPTIONS=[
   ['brushRing','◯','Brush Ring'],['smoothRing','◎','Smooth Ring'],['radial','✺','Radial Bars'],['orbit','••','Orbit Dots'],
+  ['ncsContour','◉','NCS Bold Ring'],['ncsBars','✳','NCS Spectrum Bars'],
   ['centerLine','∿','Center Wave'],['mountain','⌁','Mountain Wave'],
   ['softBars','▥','Soft Bars'],['mirrorBars','▦','Mirror Bars'],['roundedBars','▤','Rounded Bars'],['centerBars','▧','Center Mirror'],
   ['bottom','▁','Bottom Wave'],['top','▔','Top Wave'],['dual','═','Top + Bottom'],['left','▏','Left Bars'],['right','▕','Right Bars'],['sides','↔','Side Bars']
@@ -23,6 +24,10 @@ const SHAPE_OPTIONS=[
   ['lotus','✿','Lotus'],['blob','◌','Ink Blob']
 ];
 const TEMPLATES={
+  ncsBold:{name:'NCS Bold White',icon:'◉',style:'ncsContour',shape:'circle',size:46,maxSize:79,thickness:7,opacity:100,reaction:230,beatPunch:190,beatSensitivity:145,smoothing:35,detail:176,toothDepth:155,sharpness:75,glow:32,color:'#ffffff',showWave:true,showGlow:true,showSecondary:false,x:32,y:50},
+  ncsCyan:{name:'NCS Electric Cyan',icon:'✳',style:'ncsBars',shape:'circle',size:46,maxSize:85,thickness:7,opacity:100,reaction:250,beatPunch:210,beatSensitivity:145,smoothing:31,detail:160,toothDepth:175,sharpness:80,glow:42,color:'#36e6ff',showWave:true,showGlow:true,showSecondary:true,x:32,y:50},
+  ncsPink:{name:'NCS Pink Pulse',icon:'✳',style:'ncsBars',shape:'circle',size:46,maxSize:87,thickness:7,opacity:100,reaction:260,beatPunch:235,beatSensitivity:152,smoothing:27,detail:168,toothDepth:175,sharpness:90,glow:40,color:'#ff46cf',showWave:true,showGlow:true,showSecondary:true,x:32,y:50},
+
   lofiCalm:{name:'Lo-fi Calm',icon:'▦',style:'mirrorBars',shape:'circle',size:54,maxSize:70,thickness:3,opacity:74,reaction:46,beatPunch:16,beatSensitivity:100,smoothing:91,detail:144,toothDepth:54,sharpness:18,glow:3,showSecondary:false},
   softVocal:{name:'Soft Vocal',icon:'▧',style:'centerBars',shape:'circle',size:58,maxSize:72,thickness:3,opacity:80,reaction:62,beatPunch:20,beatSensitivity:112,smoothing:87,detail:136,toothDepth:68,sharpness:28,glow:5,showSecondary:false},
   acousticGentle:{name:'Acoustic Gentle',icon:'▤',style:'roundedBars',shape:'circle',size:52,maxSize:68,thickness:4,opacity:76,reaction:55,beatPunch:18,beatSensitivity:105,smoothing:89,detail:120,toothDepth:62,sharpness:10,glow:2,showSecondary:false},
