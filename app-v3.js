@@ -104,7 +104,7 @@ function energy(){
   const modeBoost={balanced:1,punchy:1.38,transient:1.78}[state.reactive.syncMode]||1,sensitivity=waveValue('beatSensitivity',135)/100;
   const raw=clamp((delta*7.6+bassAttack*4.5+flux*.72)*sensitivity*modeBoost,0,1.8),now=performance.now();
   if(raw>.34&&now-lastBeatAt>62){beatEnvelope=Math.max(beatEnvelope,raw);lastBeatAt=now}else beatEnvelope=Math.max(raw*.64,beatEnvelope*(state.reactive.syncMode==='transient'?.74:.80));
-  return{bass,mid,treble,beat:clamp(beatEnvelope,0,1.8),bins:freqData,flux,time:audio.currentTime||performance.now()/1000};
+  return{bass,mid,treble,beat:clamp(beatEnvelope,0,1.8),bins:freqData,flux,sampleRate:audioCtx.sampleRate,time:audio.currentTime||performance.now()/1000};
 }
 function updateMeters(r){if(exporting||(frameCounter++%2)!==0)return;[['meterBass',r.bass],['meterMid',r.mid],['meterTreble',r.treble],['meterBeat',r.beat/1.3]].forEach(([id,v])=>{const el=$('#'+id);if(el)el.style.width=(clamp(v,0,1)*100).toFixed(1)+'%'})}
 
