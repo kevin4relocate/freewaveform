@@ -1,5 +1,26 @@
 # FreeWaveform
 
+## Optional NCS-inspired wave styles
+
+The original waveforms, default project, FX and export engine are unchanged. Three **optional**
+high-visibility presets were added under **Waveform → Waveform templates**:
+
+- **NCS Bold White** — thick, high-contrast white spectrum contour
+- **NCS Electric Cyan** — thick cyan circular spectrum bars
+- **NCS Pink Pulse** — bright pink spectrum bars with a secondary ring
+
+Each preset uses real FFT data with bass/beat reaction, thick strokes (7px default),
+an always-visible core ring, a dark separation outline for bright backgrounds,
+and controllable glow, color, width, size, depth and smoothing. You can still drag
+the wave to the left and add the song title on the right using **Text → Add Free Text**.
+Using a preset does not alter existing wave designs. The new styles also appear
+under **Waveform → Style** as **NCS Bold Ring** and **NCS Spectrum Bars**.
+
+Rendering uses the existing real-time WebM export and optional HQ MP4 renderer.
+Preview and HQ render provide audio sample-rate data to align FFT frequency mapping.
+The visuals are NCS-*inspired*; no official NCS branding or licensed recordings are included.
+
+
 A browser-based audio-reactive waveform editor for music visualizers. Audio and images stay local in the browser.
 
 ## Current workflow
