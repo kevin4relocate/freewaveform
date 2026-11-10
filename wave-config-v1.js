@@ -6,12 +6,13 @@ const DEFAULT_FILL={enabled:false,color:'#17191c',opacity:88};
 // wave-fill-v1.js uses enabled/color/opacity from it as the waveform's reactive Fill state.
 const DEFAULT_PLATE={enabled:false,shape:'follow',tone:'custom',size:100,opacity:88,softness:0,shadow:0,color:'#17191c'};
 const DEFAULT_WAVE={
-  template:'ink',style:'brushRing',shape:'circle',size:46,maxSize:70,thickness:4,opacity:78,
-  smoothing:55,reaction:130,beatPunch:150,beatSensitivity:135,glow:16,
-  detail:128,toothDepth:80,sharpness:70,color:'#e5d3a6',showWave:true,showGlow:true,showSecondary:false,
+  template:'ncsClassic',style:'ncsClassic',shape:'circle',size:46,maxSize:76,thickness:3,opacity:96,
+  smoothing:42,reaction:205,beatPunch:175,beatSensitivity:140,glow:18,
+  detail:160,toothDepth:145,sharpness:83,color:'#f5f8ff',showWave:true,showGlow:true,showSecondary:false,
   x:50,y:50,plate:{...DEFAULT_PLATE}
 };
 const STYLE_OPTIONS=[
+  ['ncsClassic','◉','NCS Classic Spectrum'],['ncsBars','✳','NCS Radial Spectrum'],
   ['brushRing','◯','Brush Ring'],['smoothRing','◎','Smooth Ring'],['radial','✺','Radial Bars'],['orbit','••','Orbit Dots'],
   ['centerLine','∿','Center Wave'],['mountain','⌁','Mountain Wave'],
   ['softBars','▥','Soft Bars'],['mirrorBars','▦','Mirror Bars'],['roundedBars','▤','Rounded Bars'],['centerBars','▧','Center Mirror'],
@@ -23,6 +24,10 @@ const SHAPE_OPTIONS=[
   ['lotus','✿','Lotus'],['blob','◌','Ink Blob']
 ];
 const TEMPLATES={
+  ncsClassic:{name:'NCS Classic',icon:'◉',style:'ncsClassic',shape:'circle',size:46,maxSize:76,thickness:3,opacity:96,reaction:205,beatPunch:175,beatSensitivity:140,smoothing:42,detail:160,toothDepth:145,sharpness:83,glow:18,color:'#f5f8ff',showSecondary:false,showGlow:true},
+  ncsNeon:{name:'NCS Neon Pulse',icon:'✳',style:'ncsBars',shape:'circle',size:44,maxSize:86,thickness:4,opacity:93,reaction:265,beatPunch:245,beatSensitivity:158,smoothing:28,detail:192,toothDepth:190,sharpness:95,glow:36,color:'#69e8ff',showSecondary:true,showGlow:true},
+  ncsMinimal:{name:'NCS Minimal',icon:'◎',style:'ncsClassic',shape:'circle',size:49,maxSize:68,thickness:2,opacity:90,reaction:135,beatPunch:100,beatSensitivity:115,smoothing:70,detail:128,toothDepth:80,sharpness:55,glow:6,color:'#ffffff',showSecondary:false,showGlow:true},
+  ncsFestival:{name:'NCS Festival',icon:'✺',style:'ncsBars',shape:'circle',size:45,maxSize:93,thickness:4,opacity:100,reaction:310,beatPunch:270,beatSensitivity:175,smoothing:16,detail:232,toothDepth:210,sharpness:100,glow:42,color:'#ffc46e',showSecondary:true,showGlow:true},
   lofiCalm:{name:'Lo-fi Calm',icon:'▦',style:'mirrorBars',shape:'circle',size:54,maxSize:70,thickness:3,opacity:74,reaction:46,beatPunch:16,beatSensitivity:100,smoothing:91,detail:144,toothDepth:54,sharpness:18,glow:3,showSecondary:false},
   softVocal:{name:'Soft Vocal',icon:'▧',style:'centerBars',shape:'circle',size:58,maxSize:72,thickness:3,opacity:80,reaction:62,beatPunch:20,beatSensitivity:112,smoothing:87,detail:136,toothDepth:68,sharpness:28,glow:5,showSecondary:false},
   acousticGentle:{name:'Acoustic Gentle',icon:'▤',style:'roundedBars',shape:'circle',size:52,maxSize:68,thickness:4,opacity:76,reaction:55,beatPunch:18,beatSensitivity:105,smoothing:89,detail:120,toothDepth:62,sharpness:10,glow:2,showSecondary:false},
@@ -40,7 +45,7 @@ const TEMPLATES={
   star:{name:'Star Pulse',icon:'★',style:'smoothRing',shape:'star',size:45,thickness:3,opacity:76,reaction:180,beatPunch:200,detail:96,toothDepth:65,sharpness:64,glow:18,showSecondary:true}
 };
 const EDGE=new Set(['bottom','top','dual','left','right','sides']);
-const ROUNDISH=new Set(['brushRing','smoothRing','radial','orbit']);
+const ROUNDISH=new Set(['brushRing','smoothRing','radial','orbit','ncsClassic','ncsBars']);
 const SOFT=new Set(['softBars','mirrorBars','roundedBars','centerBars']);
 window.__FW_WAVE_CONFIG={DEFAULT_FILL,DEFAULT_PLATE,DEFAULT_WAVE,STYLE_OPTIONS,SHAPE_OPTIONS,TEMPLATES,EDGE,ROUNDISH,SOFT,FILLABLE:ROUNDISH};
 })();

@@ -1,6 +1,12 @@
 # FreeWaveform
 
-A browser-based audio-reactive waveform editor for music visualizers. Audio and images stay local in the browser.
+A browser-based audio-reactive waveform editor for music visualizers. Browser-only preview and WebM export keep audio/images local. **Optional HQ MP4 export uploads the audio and background assets to Cloudflare R2 and processes them on GitHub Actions.** Review your deployment policies and R2 retention settings before publishing.
+
+## Music Visualizer Studio (NCS-inspired)
+
+The Audio tab now includes a quick studio where you upload MP3 + background, enter artist/title, pick an NCS-inspired circular spectrum and an optional environment such as snow, rain, wind, mist, smoke, snowflakes, petals, flowers, autumn leaves, fireflies, light rays, bubbles or embers. Choose Apply Studio Scene; inspect the preview, play your track, and export WebM locally or optional HQ MP4 through Cloudflare/GitHub Actions. The original advanced editor remains available.
+
+NCS is a style reference, not an affiliation or music license; only use music and imagery you are authorized to publish.
 
 ## Current workflow
 
@@ -19,7 +25,7 @@ The visible layer order is:
 
 `Background → Ambient FX → Waveform Fill → Waveform Border → Waveform Center Text → Free Text → Overlay`
 
-`Ambient FX` is reserved for integrated effects such as snow, smoke, mist and dust. Fill and waveform center text use the same preview/export canvas, so export matches the live preview.
+`Ambient FX` is reserved for integrated effects such as snow, rain, wind, snowflakes, smoke, mist, dust, floating flowers, leaves, bubbles and embers. Fill and waveform center text use the same preview/export canvas, so export matches the live preview.
 
 ## Waveform features
 
