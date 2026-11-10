@@ -41,7 +41,7 @@ Create the R2 access key with Object Read & Write permission for the HQ bucket o
 
 GitHub `workflow_dispatch` only becomes callable after `.github/workflows/hq-render.yml` exists on the repository default branch.
 
-During development this implementation stays on `editor-controller-v2`. Do not merge it to `main` until the editor behavior is approved. After the workflow reaches `main`, the **Export HQ MP4** button can trigger GitHub Actions normally.
+The workflow file is present on the repository default branch. The **Export HQ MP4** button will work only after Cloudflare Pages, R2, GitHub Actions and their secrets have been configured correctly. The NCS Studio changes are developed on a separate feature branch and should be validated before merging.
 
 ## 4. First export
 
